@@ -96,29 +96,78 @@ Dann ausführen mit:
 mvn rewrite:run
 ```
 
-### Konfiguration — einzelne Sub-Rezepte deaktivieren
+### Option C: Eigene rewrite.yml (empfohlen für projektspezifische Konfiguration)
 
-Über YAML-Preset `SpringdocOpenApi31MinimalRecipe` (nullable + exclusiveMinMax, ohne example-Migration):
+Eine `rewrite.yml` im Projektroot erlaubt es, das Rezept mit eigenen Parametern zu konfigurieren — ohne die `pom.xml` zu ändern und ohne lange Kommandozeilenargumente.
+
+**Schritt 1:** `rewrite.yml` im Root des Zielprojekts anlegen:
+
+```yaml
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: com.mycompany.OpenApi31Migration
+displayName: OpenAPI 3.1 Migration (angepasst)
+recipeList:
+  - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      enableOpenApi31Properties: true
+      migrateNullable: true
+      migrateExclusiveMinMax: true
+      migrateExamples: false   # example-Migration bewusst deaktiviert
+```
+
+**Schritt 2:** Plugin in `pom.xml` einbinden und eigenes Rezept aktivieren:
+
+```xml
+<plugin>
+    <groupId>org.openrewrite.maven</groupId>
+    <artifactId>rewrite-maven-plugin</artifactId>
+    <version>5.43.0</version>
+    <configuration>
+        <activeRecipes>
+            <recipe>com.mycompany.OpenApi31Migration</recipe>
+        </activeRecipes>
+    </configuration>
+    <dependencies>
+        <dependency>
+            <groupId>io.github.benjaminknauer</groupId>
+            <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+    </dependencies>
+</plugin>
+```
+
+**Schritt 3:** Ausführen:
+
+```bash
+mvn rewrite:run
+# oder nur Vorschau:
+mvn rewrite:dryRun
+```
+
+Verfügbare Parameter für `SpringdocOpenApi31Recipe`:
+
+| Parameter | Typ | Standard | Beschreibung |
+|-----------|-----|---------|--------------|
+| `enableOpenApi31Properties` | Boolean | `true` | `springdoc.api-docs.version` in properties/yml setzen |
+| `migrateNullable` | Boolean | `true` | `nullable=true` → `types={"T","null"}` |
+| `migrateExclusiveMinMax` | Boolean | `true` | `minimum+exclusiveMinimum=true` → `exclusiveMinimumValue` |
+| `migrateExamples` | Boolean | `true` | `example="X"` → `examples={"X"}` |
+
+### Fertige Preset-Rezepte
+
+Alternativ zu eigener Konfiguration gibt es drei vordefinierte Varianten:
+
+| Rezept | Properties | nullable | exclusiveMinMax | examples |
+|--------|-----------|---------|-----------------|---------|
+| `SpringdocOpenApi31Recipe` | ✅ | ✅ | ✅ | ✅ |
+| `SpringdocOpenApi31AnnotationsOnlyRecipe` | ❌ | ✅ | ✅ | ✅ |
+| `SpringdocOpenApi31MinimalRecipe` | ✅ | ✅ | ✅ | ❌ |
 
 ```bash
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
   -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31MinimalRecipe
-```
-
-Oder über Plugin-Konfiguration in der `pom.xml`:
-
-```xml
-<configuration>
-    <activeRecipes>
-        <recipe>io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
-    </activeRecipes>
-    <recipeOptions>
-        <io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
-            <migrateExamples>false</migrateExamples>
-        </io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
-    </recipeOptions>
-</configuration>
 ```
 
 ### OpenAPI-Version nach Anwendung prüfen

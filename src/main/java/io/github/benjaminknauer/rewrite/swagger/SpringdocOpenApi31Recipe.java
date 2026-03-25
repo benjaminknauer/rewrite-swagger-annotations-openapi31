@@ -20,16 +20,20 @@ import java.util.List;
  *
  * <p>Anwendung via Maven (alle Sub-Rezepte aktiv):</p>
  * <pre>
- * mvn rewrite:run \
- *   -Drewrite.recipeArtifactCoordinates=de.demo:openapi-31-migration-recipe:1.0.0-SNAPSHOT \
- *   -Drewrite.activeRecipes=de.demo.openapi.rewrite.SpringdocOpenApi31Recipe
+ * mvn org.openrewrite.maven:rewrite-maven-plugin:run \
+ *   -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+ *   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
  * </pre>
  *
- * <p>Konfiguriert in YAML (nur bestimmte Sub-Rezepte):</p>
+ * <p>Konfiguriert via {@code rewrite.yml} im Projektroot (nur bestimmte Sub-Rezepte):</p>
  * <pre>
+ * ---
+ * type: specs.openrewrite.org/v1beta/recipe
+ * name: com.mycompany.MyMigration
  * recipeList:
- *   - de.demo.openapi.rewrite.SpringdocOpenApi31Recipe:
+ *   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
  *       migrateExamples: false
+ *       enableOpenApi31Properties: false
  * </pre>
  */
 public class SpringdocOpenApi31Recipe extends Recipe {
