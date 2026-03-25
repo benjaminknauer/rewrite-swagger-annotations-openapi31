@@ -17,21 +17,28 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * OpenRewrite-Rezept: Migriert {@code @Schema(example = "foo")} von OpenAPI 3.0
- * auf die OpenAPI 3.1 / JSON-Schema-2020-12-konforme Syntax
+ * OpenRewrite recipe: migrates {@code @Schema(example = "foo")} from OpenAPI 3.0
+ * to the OpenAPI 3.1 / JSON Schema 2020-12 compliant syntax
  * {@code @Schema(examples = {"foo"})}.
  *
- * <p>Hintergrund: In OpenAPI 3.0 war {@code example} ein einzelner Wert am
- * Schema-Objekt. JSON Schema Draft 2020-12 (Basis von OA 3.1) definiert
- * {@code examples} als Array, sodass mehrere Beispielwerte angegeben werden
- * können. Das Singular-Feld {@code example} ist in OA 3.1 noch erlaubt,
- * aber {@code examples} ist die kanonische Form.</p>
+ * <p>In OpenAPI 3.0, {@code example} was a single value on the Schema object.
+ * JSON Schema Draft 2020-12 (the basis of OA 3.1) defines {@code examples} as
+ * an array. The singular {@code example} field is deprecated in OA 3.1 in
+ * favour of {@code examples}.</p>
  *
- * <p>Transformationsregeln:</p>
+ * <p><strong>Note:</strong> This recipe is disabled by default in
+ * {@link SpringdocOpenApi31Recipe} because the migration changes the generated
+ * JSON output ({@code "example": "foo"} → {@code "examples": ["foo"]}), which
+ * can break tools, client generators, or documentation renderers that look for
+ * the singular field. Enable explicitly via {@code migrateExamples: true} once
+ * you have verified that all consumers of your API spec handle the
+ * {@code examples} array form.</p>
+ *
+ * <p>Transformation rules:</p>
  * <ul>
  *   <li>{@code @Schema(example = "X")} → {@code @Schema(examples = {"X"})}</li>
- *   <li>Alle anderen Attribute (z.&nbsp;B. {@code description}, {@code type}) bleiben erhalten.</li>
- *   <li>Ist bereits {@code examples} vorhanden, wird die Annotation nicht verändert (idempotent).</li>
+ *   <li>All other attributes (e.g. {@code description}, {@code type}) are preserved.</li>
+ *   <li>If {@code examples} (plural) is already present, the annotation is not changed (idempotent).</li>
  * </ul>
  */
 public class ExampleMigrationRecipe extends Recipe {
@@ -40,15 +47,15 @@ public class ExampleMigrationRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Migriere @Schema(example=...) zu OpenAPI 3.1 examples-Array";
+        return "Migrate @Schema(example=...) to OpenAPI 3.1 examples array";
     }
 
     @Override
     public String getDescription() {
-        return "Ersetzt das singuläre OpenAPI-3.0-Attribut 'example = \"X\"' in @Schema-Annotationen "
-            + "durch das OpenAPI-3.1-konforme Array 'examples = {\"X\"}'. "
-            + "Alle anderen Attribute bleiben erhalten. "
-            + "Ist bereits ein 'examples'-Attribut vorhanden, wird die Annotation nicht verändert (idempotent).";
+        return "Replaces the singular OpenAPI 3.0 attribute 'example = \"X\"' in @Schema annotations "
+            + "with the OpenAPI 3.1 compliant array 'examples = {\"X\"}'. "
+            + "All other attributes are preserved. "
+            + "If an 'examples' attribute is already present, the annotation is not changed (idempotent).";
     }
 
     @Override
@@ -81,40 +88,40 @@ public class ExampleMigrationRecipe extends Recipe {
                 return visited;
             }
 
-            // Nicht transformieren wenn 'examples' (Plural) bereits vorhanden
-            boolean hatExamples = args.stream().anyMatch(arg ->
+            // Do not transform if 'examples' (plural) is already present
+            boolean hasExamples = args.stream().anyMatch(arg ->
                 arg instanceof J.Assignment a && "examples".equals(extractKey(a))
             );
-            if (hatExamples) {
+            if (hasExamples) {
                 return visited;
             }
 
-            Optional<String> exampleWert = findStringArg(args, "example");
-            if (exampleWert.isEmpty()) {
+            Optional<String> exampleValue = findStringArg(args, "example");
+            if (exampleValue.isEmpty()) {
                 return visited;
             }
 
-            // 'example' entfernen, alle anderen Attribute behalten
-            List<Expression> verbleibend = new ArrayList<>();
+            // Remove 'example', keep all other attributes
+            List<Expression> remaining = new ArrayList<>();
             for (Expression arg : args) {
                 if (arg instanceof J.Assignment assignment && "example".equals(extractKey(assignment))) {
                     continue;
                 }
-                verbleibend.add(arg);
+                remaining.add(arg);
             }
 
-            String escapedWert = exampleWert.get().replace("\\", "\\\\").replace("\"", "\\\"");
-            String neuerArgCode = String.format("examples = {\"%s\"}", escapedWert);
+            String escapedValue = exampleValue.get().replace("\\", "\\\\").replace("\"", "\\\"");
+            String newArgCode = String.format("examples = {\"%s\"}", escapedValue);
 
-            J.Annotation neueAnnotation = JavaTemplate
-                .builder("@Schema(" + buildArgString(verbleibend, neuerArgCode) + ")")
+            J.Annotation newAnnotation = JavaTemplate
+                .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpath("swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
 
-            return neueAnnotation;
+            return newAnnotation;
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -141,16 +148,16 @@ public class ExampleMigrationRecipe extends Recipe {
             return variable instanceof J.Identifier id ? id.getSimpleName() : "";
         }
 
-        private String buildArgString(List<Expression> verbleibend, String neuerArgCode) {
-            if (verbleibend.isEmpty()) {
-                return neuerArgCode;
+        private String buildArgString(List<Expression> remaining, String newArgCode) {
+            if (remaining.isEmpty()) {
+                return newArgCode;
             }
             StringBuilder sb = new StringBuilder();
-            for (Expression expr : verbleibend) {
+            for (Expression expr : remaining) {
                 if (sb.length() > 0) sb.append(", ");
                 sb.append(expr.print(getCursor()).strip());
             }
-            sb.append(", ").append(neuerArgCode);
+            sb.append(", ").append(newArgCode);
             return sb.toString();
         }
     }

@@ -17,22 +17,22 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exampleAlleinWirdZuExamplesArray() {
+    void exampleAloneBecomesExamplesArray() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(example = "Max Mustermann")
+                class Example {
+                    @Schema(example = "John Doe")
                     private String name;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(examples = {"Max Mustermann"})
+                class Example {
+                    @Schema(examples = {"John Doe"})
                     private String name;
                 }
                 """
@@ -41,22 +41,22 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exampleMitBeschreibungBehaeltBeschreibung() {
+    void exampleWithDescriptionKeepsDescription() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Der vollständige Name", example = "Max Mustermann")
+                class Example {
+                    @Schema(description = "The full name", example = "John Doe")
                     private String name;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Der vollständige Name", examples = {"Max Mustermann"})
+                class Example {
+                    @Schema(description = "The full name", examples = {"John Doe"})
                     private String name;
                 }
                 """
@@ -65,22 +65,22 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exampleMitTypeBehaeltType() {
+    void exampleWithTypeKeepsType() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(type = "string", example = "max@example.com")
+                class Example {
+                    @Schema(type = "string", example = "john@example.com")
                     private String email;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(type = "string", examples = {"max@example.com"})
+                class Example {
+                    @Schema(type = "string", examples = {"john@example.com"})
                     private String email;
                 }
                 """
@@ -89,23 +89,23 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void leererExampleStringWirdMigriert() {
+    void emptyExampleStringIsMigrated() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(example = "")
-                    private String wert;
+                    private String value;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(examples = {""})
-                    private String wert;
+                    private String value;
                 }
                 """
             )
@@ -113,14 +113,14 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void schemaOhneExampleBleibtUnveraendert() {
+    void schemaWithoutExampleRemainsUnchanged() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Eine Beschreibung")
+                class Example {
+                    @Schema(description = "A description")
                     private String name;
                 }
                 """
@@ -129,14 +129,14 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void bereitsExamplesVorhandenBleibtUnveraendert() {
+    void existingExamplesRemainsUnchanged() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(examples = {"Max Mustermann", "Erika Musterfrau"})
+                class Example {
+                    @Schema(examples = {"John Doe", "Jane Doe"})
                     private String name;
                 }
                 """
@@ -145,21 +145,21 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exampleAufMethodenparameterWirdMigriert() {
+    void exampleOnMethodParameterIsMigrated() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    void setName(@Schema(example = "Max") String name) {}
+                class Example {
+                    void setName(@Schema(example = "John") String name) {}
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    void setName(@Schema(examples = {"Max"}) String name) {}
+                class Example {
+                    void setName(@Schema(examples = {"John"}) String name) {}
                 }
                 """
             )
@@ -167,23 +167,23 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exampleMitMehrerenAttributenBleibtVollstaendig() {
+    void exampleWithMultipleAttributesRemainsComplete() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Alter in Jahren", minimum = "0", maximum = "150", example = "30")
-                    private int alter;
+                class Example {
+                    @Schema(description = "Age in years", minimum = "0", maximum = "150", example = "30")
+                    private int age;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Alter in Jahren", minimum = "0", maximum = "150", examples = {"30"})
-                    private int alter;
+                class Example {
+                    @Schema(description = "Age in years", minimum = "0", maximum = "150", examples = {"30"})
+                    private int age;
                 }
                 """
             )

@@ -18,28 +18,28 @@ import java.util.OptionalInt;
 import java.util.Set;
 
 /**
- * OpenRewrite-Rezept: Migriert das Legacy-Pattern
- * {@code @Schema(minimum = "X", exclusiveMinimum = true)} auf die
- * swagger-core-v3 / OpenAPI-3.1-Attribute
+ * OpenRewrite recipe: migrates the legacy pattern
+ * {@code @Schema(minimum = "X", exclusiveMinimum = true)} to the
+ * swagger-core-v3 / OpenAPI 3.1 attributes
  * {@code @Schema(exclusiveMinimumValue = X)} (int).
  *
- * <p>Hintergrund: In OpenAPI 3.0 waren {@code exclusiveMinimum} und
- * {@code exclusiveMaximum} Boolean-Flags, die zusammen mit {@code minimum}
- * bzw. {@code maximum} kombiniert wurden. In OpenAPI 3.1 (JSON Schema
- * 2020-12) sind sie numerische Werte. swagger-annotations 2.2.x bildet
- * das mit den neuen {@code int}-Attributen
- * {@code exclusiveMinimumValue} und {@code exclusiveMaximumValue} ab.</p>
+ * <p>Background: In OpenAPI 3.0, {@code exclusiveMinimum} and
+ * {@code exclusiveMaximum} were boolean flags combined with {@code minimum}
+ * and {@code maximum} respectively. In OpenAPI 3.1 (JSON Schema
+ * 2020-12) they are numeric values. swagger-annotations 2.2.x models
+ * this with the new {@code int} attributes
+ * {@code exclusiveMinimumValue} and {@code exclusiveMaximumValue}.</p>
  *
- * <p>Transformationsregeln:</p>
+ * <p>Transformation rules:</p>
  * <ul>
  *   <li>{@code minimum = "X", exclusiveMinimum = true}
  *       → {@code exclusiveMinimumValue = X}</li>
  *   <li>{@code maximum = "X", exclusiveMaximum = true}
  *       → {@code exclusiveMaximumValue = X}</li>
- *   <li>Nicht ganzzahlige Werte (z.&nbsp;B. {@code "1.5"}) werden
- *       übersprungen — {@code exclusiveMinimumValue} ist {@code int}.</li>
- *   <li>{@code exclusiveMinimum = false} oder fehlendes {@code minimum}
- *       → keine Änderung.</li>
+ *   <li>Non-integer values (e.g. {@code "1.5"}) are skipped —
+ *       {@code exclusiveMinimumValue} is {@code int}.</li>
+ *   <li>{@code exclusiveMinimum = false} or missing {@code minimum}
+ *       → no change.</li>
  * </ul>
  */
 public class ExclusiveMinMaxRecipe extends Recipe {
@@ -48,15 +48,15 @@ public class ExclusiveMinMaxRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Migriere exclusiveMinimum/exclusiveMaximum auf OpenAPI 3.1 int-Attribute";
+        return "Migrate exclusiveMinimum/exclusiveMaximum to OpenAPI 3.1 int attributes";
     }
 
     @Override
     public String getDescription() {
-        return "Ersetzt das OpenAPI-3.0-Pattern '@Schema(minimum = \"X\", exclusiveMinimum = true)' "
-            + "durch das OpenAPI-3.1-konforme '@Schema(exclusiveMinimumValue = X)' (int-Attribut). "
-            + "Analog für maximum/exclusiveMaximum → exclusiveMaximumValue. "
-            + "Nicht-ganzzahlige Werte (z.B. '1.5') werden übersprungen, da exclusiveMinimumValue ein int ist.";
+        return "Replaces the OpenAPI 3.0 pattern '@Schema(minimum = \"X\", exclusiveMinimum = true)' "
+            + "with the OpenAPI 3.1 compliant '@Schema(exclusiveMinimumValue = X)' (int attribute). "
+            + "Analogously for maximum/exclusiveMaximum → exclusiveMaximumValue. "
+            + "Non-integer values (e.g. '1.5') are skipped because exclusiveMinimumValue is an int.";
     }
 
     @Override
@@ -89,55 +89,55 @@ public class ExclusiveMinMaxRecipe extends Recipe {
                 return visited;
             }
 
-            boolean hatExclusiveMinTrue = findBooleanArg(args, "exclusiveMinimum", true).isPresent();
-            boolean hatExclusiveMaxTrue = findBooleanArg(args, "exclusiveMaximum", true).isPresent();
+            boolean hasExclusiveMinTrue = findBooleanArg(args, "exclusiveMinimum", true).isPresent();
+            boolean hasExclusiveMaxTrue = findBooleanArg(args, "exclusiveMaximum", true).isPresent();
 
-            if (!hatExclusiveMinTrue && !hatExclusiveMaxTrue) {
+            if (!hasExclusiveMinTrue && !hasExclusiveMaxTrue) {
                 return visited;
             }
 
-            // Ganzzahligen Wert aus minimum/maximum parsen
-            OptionalInt minWert = hatExclusiveMinTrue
+            // Parse integer value from minimum/maximum
+            OptionalInt minValue = hasExclusiveMinTrue
                 ? parseIntArg(args, "minimum") : OptionalInt.empty();
-            OptionalInt maxWert = hatExclusiveMaxTrue
+            OptionalInt maxValue = hasExclusiveMaxTrue
                 ? parseIntArg(args, "maximum") : OptionalInt.empty();
 
-            // Abbrechen wenn kein korrespondierendes minimum/maximum vorhanden
-            // oder der Wert nicht ganzzahlig ist (exclusiveMinimumValue ist int)
-            if (hatExclusiveMinTrue && minWert.isEmpty()) {
+            // Abort if no corresponding minimum/maximum is present
+            // or if the value is non-integer (exclusiveMinimumValue is int)
+            if (hasExclusiveMinTrue && minValue.isEmpty()) {
                 return visited;
             }
-            if (hatExclusiveMaxTrue && maxWert.isEmpty()) {
+            if (hasExclusiveMaxTrue && maxValue.isEmpty()) {
                 return visited;
             }
 
-            // Zu entfernende Attribute: minimum, exclusiveMinimum (boolean-Flag)
-            // und analog für maximum
-            List<Expression> verbleibend = new ArrayList<>();
+            // Attributes to remove: minimum, exclusiveMinimum (boolean flag)
+            // and analogously for maximum
+            List<Expression> remaining = new ArrayList<>();
             for (Expression arg : args) {
                 if (arg instanceof J.Assignment assignment) {
                     String key = extractKey(assignment);
-                    if (hatExclusiveMinTrue && ("minimum".equals(key) || "exclusiveMinimum".equals(key))) {
+                    if (hasExclusiveMinTrue && ("minimum".equals(key) || "exclusiveMinimum".equals(key))) {
                         continue;
                     }
-                    if (hatExclusiveMaxTrue && ("maximum".equals(key) || "exclusiveMaximum".equals(key))) {
+                    if (hasExclusiveMaxTrue && ("maximum".equals(key) || "exclusiveMaximum".equals(key))) {
                         continue;
                     }
                 }
-                verbleibend.add(arg);
+                remaining.add(arg);
             }
 
-            // Neue int-Attribute für OA 3.1
-            List<String> neueArgs = new ArrayList<>();
-            if (hatExclusiveMinTrue && minWert.isPresent()) {
-                neueArgs.add(String.format("exclusiveMinimumValue = %d", minWert.getAsInt()));
+            // New int attributes for OA 3.1
+            List<String> newArgs = new ArrayList<>();
+            if (hasExclusiveMinTrue && minValue.isPresent()) {
+                newArgs.add(String.format("exclusiveMinimumValue = %d", minValue.getAsInt()));
             }
-            if (hatExclusiveMaxTrue && maxWert.isPresent()) {
-                neueArgs.add(String.format("exclusiveMaximumValue = %d", maxWert.getAsInt()));
+            if (hasExclusiveMaxTrue && maxValue.isPresent()) {
+                newArgs.add(String.format("exclusiveMaximumValue = %d", maxValue.getAsInt()));
             }
 
-            String argString = buildArgString(verbleibend, neueArgs);
-            J.Annotation neueAnnotation = JavaTemplate
+            String argString = buildArgString(remaining, newArgs);
+            J.Annotation newAnnotation = JavaTemplate
                 .builder("@Schema(" + argString + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
@@ -145,7 +145,7 @@ public class ExclusiveMinMaxRecipe extends Recipe {
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
 
-            return neueAnnotation;
+            return newAnnotation;
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -176,7 +176,7 @@ public class ExclusiveMinMaxRecipe extends Recipe {
                         try {
                             return OptionalInt.of(Integer.parseInt(s));
                         } catch (NumberFormatException e) {
-                            return OptionalInt.empty(); // z.B. "1.5" → überspringen
+                            return OptionalInt.empty(); // e.g. "1.5" → skip
                         }
                     }
                 }
@@ -189,15 +189,15 @@ public class ExclusiveMinMaxRecipe extends Recipe {
             return variable instanceof J.Identifier id ? id.getSimpleName() : "";
         }
 
-        private String buildArgString(List<Expression> verbleibend, List<String> neueArgs) {
+        private String buildArgString(List<Expression> remaining, List<String> newArgs) {
             StringBuilder sb = new StringBuilder();
-            for (Expression expr : verbleibend) {
+            for (Expression expr : remaining) {
                 if (sb.length() > 0) sb.append(", ");
                 sb.append(expr.print(getCursor()).strip());
             }
-            for (String neuerArg : neueArgs) {
+            for (String newArg : newArgs) {
                 if (sb.length() > 0) sb.append(", ");
-                sb.append(neuerArg);
+                sb.append(newArg);
             }
             return sb.toString();
         }

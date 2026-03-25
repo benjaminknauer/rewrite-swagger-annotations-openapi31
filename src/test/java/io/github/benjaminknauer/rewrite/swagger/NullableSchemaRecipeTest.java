@@ -16,38 +16,18 @@ class NullableSchemaRecipeTest implements RewriteTest {
                 .classpath("swagger-annotations-jakarta"));
     }
 
+    // -------------------------------------------------------------------------
+    // Explicit type= attribute — type is taken from the annotation
+    // -------------------------------------------------------------------------
+
     @Test
-    void nullableAlleineWirdZuTypesArray() {
+    void nullableWithExplicitTypeBecomesTypesArray() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(nullable = true)
-                    private String name;
-                }
-                """,
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
-                    @Schema(types = {"string", "null"})
-                    private String name;
-                }
-                """
-            )
-        );
-    }
-
-    @Test
-    void nullableMitTypeWirdZuTypesArray() {
-        rewriteRun(
-            java(
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
+                class Example {
                     @Schema(type = "string", nullable = true)
                     private String email;
                 }
@@ -55,7 +35,7 @@ class NullableSchemaRecipeTest implements RewriteTest {
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(types = {"string", "null"})
                     private String email;
                 }
@@ -65,23 +45,51 @@ class NullableSchemaRecipeTest implements RewriteTest {
     }
 
     @Test
-    void nullableMitIntegerTypeWirdZuTypesArray() {
+    void nullableWithExplicitIntegerTypeBecomesTypesArray() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(type = "integer", nullable = true)
-                    private Integer alter;
+                    private Integer age;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(types = {"integer", "null"})
-                    private Integer alter;
+                    private Integer age;
+                }
+                """
+            )
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // No explicit type= — base type is inferred from the Java field type
+    // -------------------------------------------------------------------------
+
+    @Test
+    void inferStringFromStringField() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(nullable = true)
+                    private String name;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(types = {"string", "null"})
+                    private String name;
                 }
                 """
             )
@@ -89,13 +97,141 @@ class NullableSchemaRecipeTest implements RewriteTest {
     }
 
     @Test
-    void nullableFalseBleibtUnveraendert() {
+    void inferBooleanFromBooleanField() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
+                    @Schema(nullable = true)
+                    private Boolean active;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(types = {"boolean", "null"})
+                    private Boolean active;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
+    void inferIntegerFromIntegerField() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(nullable = true)
+                    private Integer count;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(types = {"integer", "null"})
+                    private Integer count;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
+    void inferIntegerFromLongField() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(nullable = true)
+                    private Long id;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(types = {"integer", "null"})
+                    private Long id;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
+    void inferNumberFromDoubleField() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(nullable = true)
+                    private Double price;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(types = {"number", "null"})
+                    private Double price;
+                }
+                """
+            )
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Other attributes are preserved
+    // -------------------------------------------------------------------------
+
+    @Test
+    void nullableWithDescriptionKeepsDescription() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(description = "The name", nullable = true)
+                    private String name;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(description = "The name", types = {"string", "null"})
+                    private String name;
+                }
+                """
+            )
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // No-op cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    void nullableFalseRemainsUnchanged() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
                     @Schema(nullable = false)
                     private String name;
                 }
@@ -105,63 +241,15 @@ class NullableSchemaRecipeTest implements RewriteTest {
     }
 
     @Test
-    void schemaOhneNullableBleibtUnveraendert() {
+    void schemaWithoutNullableRemainsUnchanged() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
-                    @Schema(description = "Der Name")
+                class Example {
+                    @Schema(description = "The name")
                     private String name;
-                }
-                """
-            )
-        );
-    }
-
-    @Test
-    void nullableMitBeschreibungBehaltBeschreibung() {
-        rewriteRun(
-            java(
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
-                    @Schema(description = "Der Name", nullable = true)
-                    private String name;
-                }
-                """,
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
-                    @Schema(description = "Der Name", types = {"string", "null"})
-                    private String name;
-                }
-                """
-            )
-        );
-    }
-
-    @Test
-    void nullableAufKlassenfeldOhneTyp() {
-        rewriteRun(
-            java(
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
-                    @Schema(nullable = true)
-                    private Boolean aktiv;
-                }
-                """,
-                """
-                import io.swagger.v3.oas.annotations.media.Schema;
-
-                class Beispiel {
-                    @Schema(types = {"string", "null"})
-                    private Boolean aktiv;
                 }
                 """
             )

@@ -8,12 +8,12 @@ import org.openrewrite.test.RewriteTest;
 import static org.openrewrite.java.Assertions.java;
 
 /**
- * Migriert das OpenAPI-3.0-Pattern
+ * Migrates the OpenAPI 3.0 pattern
  *   @Schema(minimum = "X", exclusiveMinimum = true)
- * auf das swagger-core-v3 / OpenAPI-3.1-Attribut
+ * to the swagger-core-v3 / OpenAPI 3.1 attribute
  *   @Schema(exclusiveMinimumValue = X)  (int)
  *
- * Analog für maximum/exclusiveMaximum → exclusiveMaximumValue.
+ * Analogously for maximum/exclusiveMaximum → exclusiveMaximumValue.
  */
 class ExclusiveMinMaxRecipeTest implements RewriteTest {
 
@@ -25,23 +25,23 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exclusiveMinimumMitMinimumWirdKombiniert() {
+    void exclusiveMinimumWithMinimumIsCombined() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(minimum = "10", exclusiveMinimum = true)
-                    private int alter;
+                    private int age;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(exclusiveMinimumValue = 10)
-                    private int alter;
+                    private int age;
                 }
                 """
             )
@@ -49,23 +49,23 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exclusiveMaximumMitMaximumWirdKombiniert() {
+    void exclusiveMaximumWithMaximumIsCombined() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(maximum = "100", exclusiveMaximum = true)
-                    private int alter;
+                    private int age;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(exclusiveMaximumValue = 100)
-                    private int alter;
+                    private int age;
                 }
                 """
             )
@@ -73,23 +73,23 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void beideExclusiveWerdenKombiniert() {
+    void bothExclusiveFlagsAreCombined() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(minimum = "0", exclusiveMinimum = true, maximum = "100", exclusiveMaximum = true)
-                    private int prozent;
+                    private int percent;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(exclusiveMinimumValue = 0, exclusiveMaximumValue = 100)
-                    private int prozent;
+                    private int percent;
                 }
                 """
             )
@@ -97,15 +97,15 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exclusiveFalseBleibtUnveraendert() {
+    void exclusiveFalseRemainsUnchanged() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(minimum = "0", exclusiveMinimum = false)
-                    private int wert;
+                    private int value;
                 }
                 """
             )
@@ -113,15 +113,15 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void nurMinimumOhneExclusiveBleibtUnveraendert() {
+    void minimumOnlyWithoutExclusiveRemainsUnchanged() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(minimum = "0")
-                    private int wert;
+                    private int value;
                 }
                 """
             )
@@ -129,16 +129,16 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void exclusiveMinimumValueBereitsVorhandenBleibtUnveraendert() {
-        // Bereits migrierter Code (exclusiveMinimumValue als int) bleibt unberührt
+    void exclusiveMinimumValueAlreadyPresentRemainsUnchanged() {
+        // Already migrated code (exclusiveMinimumValue as int) is left untouched
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(exclusiveMinimumValue = 10)
-                    private int alter;
+                    private int age;
                 }
                 """
             )
@@ -146,16 +146,16 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
     }
 
     @Test
-    void nichtGanzzahligerMinimumWertWirdUebersprungen() {
-        // "1.5" kann nicht in int konvertiert werden → keine Änderung
+    void nonIntegerMinimumValueIsSkipped() {
+        // "1.5" cannot be converted to int → no change
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class Beispiel {
+                class Example {
                     @Schema(minimum = "1.5", exclusiveMinimum = true)
-                    private double wert;
+                    private double value;
                 }
                 """
             )

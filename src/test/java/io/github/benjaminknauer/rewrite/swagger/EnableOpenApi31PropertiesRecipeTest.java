@@ -20,14 +20,14 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     // =========================================================================
 
     @Test
-    void fehlenderEintragWirdHinzugefuegt() {
+    void missingEntryIsAdded() {
         rewriteRun(
             properties(
                 """
-                spring.application.name=meine-app
+                spring.application.name=my-app
                 """,
                 """
-                spring.application.name=meine-app
+                spring.application.name=my-app
                 springdoc.api-docs.version=openapi_3_1
                 """
             )
@@ -35,15 +35,15 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     }
 
     @Test
-    void vorhandener30EintragWirdAktualisiert() {
+    void existing30EntryIsUpdated() {
         rewriteRun(
             properties(
                 """
-                spring.application.name=meine-app
+                spring.application.name=my-app
                 springdoc.api-docs.version=openapi_3_0
                 """,
                 """
-                spring.application.name=meine-app
+                spring.application.name=my-app
                 springdoc.api-docs.version=openapi_3_1
                 """
             )
@@ -51,7 +51,7 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     }
 
     @Test
-    void bereits31EintragBleibtUnveraendert() {
+    void existing31EntryRemainsUnchanged() {
         rewriteRun(
             properties(
                 """
@@ -62,7 +62,7 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     }
 
     @Test
-    void leerePropertiesDateiErhaeltEintrag() {
+    void emptyPropertiesFileReceivesEntry() {
         rewriteRun(
             properties(
                 "",
@@ -78,13 +78,13 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     // =========================================================================
 
     @Test
-    void yaml_vorhandener30EintragWirdAktualisiert() {
+    void yaml_existing30EntryIsUpdated() {
         rewriteRun(
             yaml(
                 """
                 spring:
                   application:
-                    name: meine-app
+                    name: my-app
                 springdoc:
                   api-docs:
                     version: openapi_3_0
@@ -92,7 +92,7 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
                 """
                 spring:
                   application:
-                    name: meine-app
+                    name: my-app
                 springdoc:
                   api-docs:
                     version: openapi_3_1
@@ -102,7 +102,7 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     }
 
     @Test
-    void yaml_fehlenderEintragWirdHinzugefuegt() {
+    void yaml_missingEntryIsAdded() {
         rewriteRun(
             yaml(
                 """
@@ -121,7 +121,7 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
     }
 
     @Test
-    void yaml_bereits31EintragBleibtUnveraendert() {
+    void yaml_existing31EntryRemainsUnchanged() {
         rewriteRun(
             yaml(
                 """

@@ -87,6 +87,12 @@
             <artifactId>rewrite-yaml</artifactId>
         </dependency>
 
+        <!-- OpenRewrite Maven-Transformation (pom.xml — AddDependency) -->
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-maven</artifactId>
+        </dependency>
+
         <!-- swagger-annotations: Typ-Prüfungen im Classpath (auch zur Testlaufzeit nötig) -->
         <dependency>
             <groupId>org.springdoc</groupId>

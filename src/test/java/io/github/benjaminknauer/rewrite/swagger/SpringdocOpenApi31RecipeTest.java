@@ -10,9 +10,9 @@ import static org.openrewrite.java.Assertions.java;
 import static org.openrewrite.properties.Assertions.properties;
 
 /**
- * Integrationstests für das Composite-Rezept {@link SpringdocOpenApi31Recipe}.
- * Prüft sowohl das Vollszenario als auch die selektive Aktivierung/Deaktivierung
- * einzelner Sub-Rezepte via Konfigurationsoptionen.
+ * Integration tests for the composite recipe {@link SpringdocOpenApi31Recipe}.
+ * Covers the full migration scenario as well as selective enabling/disabling
+ * of individual sub-recipes via configuration options.
  */
 class SpringdocOpenApi31RecipeTest implements RewriteTest {
 
@@ -24,19 +24,21 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
     }
 
     // =========================================================================
-    // Vollständiges Migrationsszenario (alle Sub-Rezepte aktiv)
+    // Full migration scenario (all sub-recipes active)
     // =========================================================================
 
     @Test
-    void vollstaendigesMigrationsSzenario() {
+    void fullMigrationScenario() {
+        // Default: useJSpecifyNullable=true → @Nullable for fields without explicit type=,
+        //          @Schema(types={"T","null"}) for fields with explicit type=
         rewriteRun(
             properties(
                 """
-                spring.application.name=zeit-tracker
+                spring.application.name=time-tracker
                 springdoc.api-docs.version=openapi_3_0
                 """,
                 """
-                spring.application.name=zeit-tracker
+                spring.application.name=time-tracker
                 springdoc.api-docs.version=openapi_3_1
                 """
             ),
@@ -44,29 +46,31 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class ZeitEintragDto {
-                    @Schema(description = "Projektname", nullable = true)
-                    private String projekt;
+                class TimeEntryDto {
+                    @Schema(description = "Project name", nullable = true)
+                    private String project;
 
                     @Schema(type = "string", nullable = true)
-                    private String notiz;
+                    private String note;
 
-                    @Schema(description = "Dauer in Minuten", example = "60")
-                    private int dauer;
+                    @Schema(description = "Duration in minutes", example = "60")
+                    private int duration;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
+                import org.jspecify.annotations.Nullable;
 
-                class ZeitEintragDto {
-                    @Schema(description = "Projektname", types = {"string", "null"})
-                    private String projekt;
+                class TimeEntryDto {
+                    @Nullable
+                    @Schema(description = "Project name")
+                    private String project;
 
                     @Schema(types = {"string", "null"})
-                    private String notiz;
+                    private String note;
 
-                    @Schema(description = "Dauer in Minuten", examples = {"60"})
-                    private int dauer;
+                    @Schema(description = "Duration in minutes", examples = {"60"})
+                    private int duration;
                 }
                 """
             )
@@ -74,23 +78,23 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
     }
 
     @Test
-    void exclusiveMinMaxWirdEbenfallsMigriert() {
+    void exclusiveMinMaxIsAlsoMigrated() {
         rewriteRun(
             java(
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class StundenDto {
+                class HoursDto {
                     @Schema(minimum = "0", exclusiveMinimum = true, maximum = "24", exclusiveMaximum = true)
-                    private int stunden;
+                    private int hours;
                 }
                 """,
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class StundenDto {
+                class HoursDto {
                     @Schema(exclusiveMinimumValue = 0, exclusiveMaximumValue = 24)
-                    private int stunden;
+                    private int hours;
                 }
                 """
             )
@@ -98,7 +102,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
     }
 
     @Test
-    void bereitsMigrierterCodeBleibtUnveraendert() {
+    void alreadyMigratedCodeRemainsUnchanged() {
         rewriteRun(
             properties(
                 """
@@ -109,7 +113,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                 """
                 import io.swagger.v3.oas.annotations.media.Schema;
 
-                class BereitsMigriert {
+                class AlreadyMigrated {
                     @Schema(types = {"string", "null"})
                     private String name;
                 }
@@ -119,35 +123,35 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
     }
 
     // =========================================================================
-    // Konfiguration: einzelne Sub-Rezepte deaktivieren
+    // Configuration: disabling individual sub-recipes
     // =========================================================================
 
     @Nested
-    class KonfigurierteSubrezepte {
+    class ConfiguredSubRecipes {
 
         @Test
-        void migrateExamplesFalse_exampleBleibtUnveraendert() {
+        void migrateExamplesFalse_exampleRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, null, false))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Dto {
-                        @Schema(example = "Max")
+                        @Schema(example = "John")
                         private String name;
                     }
                     """
-                    // kein zweites Argument → keine Änderung erwartet
+                    // no second argument → no change expected
                 )
             );
         }
 
         @Test
-        void migrateNullableFalse_nullableBleibtUnveraendert() {
+        void migrateNullableFalse_nullableRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, false, null, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, false, null, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -158,15 +162,15 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                         private String name;
                     }
                     """
-                    // nullable bleibt, aber example würde migriert (hier kein example vorhanden)
+                    // nullable stays, but example would be migrated (no example present here)
                 )
             );
         }
 
         @Test
-        void migrateExclusiveMinMaxFalse_legacyPatternBleibtUnveraendert() {
+        void migrateExclusiveMinMaxFalse_legacyPatternRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, false, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, false, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -174,33 +178,33 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
 
                     class Dto {
                         @Schema(minimum = "0", exclusiveMinimum = true)
-                        private int wert;
+                        private int value;
                     }
                     """
-                    // exclusiveMinimum-Pattern bleibt unverändert
+                    // exclusiveMinimum pattern remains unchanged
                 )
             );
         }
 
         @Test
-        void enablePropertiesFalse_propertiesDateiBleibtUnveraendert() {
+        void enablePropertiesFalse_propertiesFileRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, null, null, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, null, null, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 properties(
                     """
-                    spring.application.name=meine-app
+                    spring.application.name=my-app
                     springdoc.api-docs.version=openapi_3_0
                     """
-                    // Version bleibt auf 3_0, da Properties-Rezept deaktiviert
+                    // Version stays at 3_0 because the properties recipe is disabled
                 )
             );
         }
 
         @Test
-        void alleDeaktiviert_keineAenderung() {
+        void allDisabled_noChange() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, false, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, false, false, false))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 properties(
                     """
@@ -216,7 +220,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                         private String name;
 
                         @Schema(example = "foo")
-                        private String kuerzel;
+                        private String code;
                     }
                     """
                 )
@@ -224,16 +228,16 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         }
 
         @Test
-        void nurExamplesAktiv_nurExampleWirdMigriert() {
+        void onlyExamplesActive_onlyExampleIsMigrated() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, false, true))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, null, false, true))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Dto {
-                        @Schema(nullable = true, example = "Max")
+                        @Schema(nullable = true, example = "John")
                         private String name;
                     }
                     """,
@@ -241,7 +245,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Dto {
-                        @Schema(nullable = true, examples = {"Max"})
+                        @Schema(nullable = true, examples = {"John"})
                         private String name;
                     }
                     """
@@ -250,18 +254,47 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         }
 
         @Test
-        void nurNullableAktiv_nurNullableWirdMigriert() {
-            // nullable wird entfernt, example bleibt als remaining arg (kommt zuerst),
-            // types = {"string", "null"} wird am Ende angehängt
+        void onlyNullableActive_jspecify_onlyNullableIsMigrated() {
+            // Default: useJSpecifyNullable=true — nullable is replaced by @Nullable,
+            // remaining @Schema attributes are preserved
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, false, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, null, false, false))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Dto {
-                        @Schema(nullable = true, example = "Max")
+                        @Schema(nullable = true, example = "John")
+                        private String name;
+                    }
+                    """,
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+                    import org.jspecify.annotations.Nullable;
+
+                    class Dto {
+                        @Nullable
+                        @Schema(example = "John")
+                        private String name;
+                    }
+                    """
+                )
+            );
+        }
+
+        @Test
+        void useJSpecifyNullableFalse_usesTypesArrayStrategy() {
+            // useJSpecifyNullable=false → NullableSchemaRecipe — types-array in annotation
+            rewriteRun(
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, false, false, false))
+                    .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Dto {
+                        @Schema(nullable = true, example = "John")
                         private String name;
                     }
                     """,
@@ -269,7 +302,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Dto {
-                        @Schema(example = "Max", types = {"string", "null"})
+                        @Schema(example = "John", types = {"string", "null"})
                         private String name;
                     }
                     """

@@ -8,28 +8,45 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.java.tree.TypeUtils;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Currency;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 
 /**
- * OpenRewrite-Rezept: Migriert {@code @Schema(nullable = true)} von OpenAPI 3.0
- * auf die OpenAPI 3.1 konforme Syntax {@code @Schema(types = {"T", "null"})}.
+ * OpenRewrite recipe: migrates {@code @Schema(nullable = true)} from OpenAPI 3.0
+ * to the OpenAPI 3.1 compliant syntax {@code @Schema(types = {"T", "null"})}.
  *
- * <p>Hintergrund: In OpenAPI 3.1 wurde {@code nullable} zugunsten von JSON Schema
- * Draft 2020-12 entfernt. Null-Typen werden jetzt als Array im {@code type}-Feld
- * ausgedrückt, z.&nbsp;B. {@code ["string", "null"]}.</p>
+ * <p>Background: In OpenAPI 3.1, {@code nullable} was removed in favour of JSON Schema
+ * Draft 2020-12. Nullable types are now expressed as an array in the {@code type} field,
+ * e.g. {@code ["string", "null"]}.</p>
  *
- * <p>Transformationsregeln:</p>
+ * <p>Transformation rules:</p>
  * <ul>
- *   <li>{@code @Schema(nullable = true)} → {@code @Schema(types = {"string", "null"})}</li>
  *   <li>{@code @Schema(type = "X", nullable = true)} → {@code @Schema(types = {"X", "null"})}</li>
- *   <li>Alle anderen Attribute (z.&nbsp;B. {@code description}) bleiben erhalten.</li>
- *   <li>{@code nullable = false} wird ignoriert (keine Änderung).</li>
+ *   <li>{@code @Schema(nullable = true)} without explicit {@code type}: the base type is
+ *       inferred from the Java field/parameter type (e.g. {@code Boolean} → {@code "boolean"},
+ *       {@code Integer} → {@code "integer"}). Falls back to {@code "string"} for unknown types.</li>
+ *   <li>All other attributes (e.g. {@code description}) are preserved.</li>
+ *   <li>{@code nullable = false} is ignored (no change).</li>
  * </ul>
  */
 public class NullableSchemaRecipe extends Recipe {
@@ -38,14 +55,16 @@ public class NullableSchemaRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Migriere @Schema(nullable=true) zu OpenAPI 3.1 types-Array";
+        return "Migrate @Schema(nullable=true) to OpenAPI 3.1 types array";
     }
 
     @Override
     public String getDescription() {
-        return "Ersetzt das OpenAPI-3.0-Attribut 'nullable = true' in @Schema-Annotationen "
-            + "durch das OpenAPI-3.1-konforme 'types = {\"T\", \"null\"}'-Array. "
-            + "Ein vorhandenes 'type'-Attribut wird dabei übernommen; fehlt es, wird 'string' als Typ angenommen.";
+        return "Replaces the OpenAPI 3.0 attribute 'nullable = true' in @Schema annotations "
+            + "with the OpenAPI 3.1 compliant 'types = {\"T\", \"null\"}' array. "
+            + "An existing 'type' attribute is used as the base type; if absent, the type is "
+            + "inferred from the Java field or parameter type (Boolean → \"boolean\", "
+            + "Integer/Long → \"integer\", etc.). Falls back to \"string\" for unknown types.";
     }
 
     @Override
@@ -65,6 +84,46 @@ public class NullableSchemaRecipe extends Recipe {
 
     private static class NullableSchemaVisitor extends JavaIsoVisitor<ExecutionContext> {
 
+        private static final Map<String, String> JAVA_TYPE_TO_OPENAPI = Map.ofEntries(
+            // Strings
+            Map.entry(String.class.getName(),     "string"),
+            // Booleans
+            Map.entry(Boolean.class.getName(),    "boolean"),
+            // Integers
+            Map.entry(Integer.class.getName(),    "integer"),
+            Map.entry(Long.class.getName(),       "integer"),
+            Map.entry(Short.class.getName(),      "integer"),
+            Map.entry(Byte.class.getName(),       "integer"),
+            Map.entry(BigInteger.class.getName(), "integer"),
+            // Numbers
+            Map.entry(Float.class.getName(),      "number"),
+            Map.entry(Double.class.getName(),     "number"),
+            Map.entry(BigDecimal.class.getName(), "number"),
+            // Types that Jackson always serializes as string regardless of configuration
+            Map.entry(UUID.class.getName(),       "string"),
+            Map.entry(URI.class.getName(),        "string"),
+            Map.entry(URL.class.getName(),        "string"),
+            Map.entry(Currency.class.getName(),   "string"),
+            Map.entry(Locale.class.getName(),     "string")
+            // NOTE: java.time types (LocalDate, LocalDateTime, etc.) are intentionally absent.
+            // Their JSON representation depends on Jackson configuration:
+            // WRITE_DATES_AS_TIMESTAMPS=true (Jackson default) → array/number
+            // WRITE_DATES_AS_TIMESTAMPS=false (common in Spring Boot) → string
+            // Inferring from the Java type alone would be incorrect in half the cases.
+        );
+
+        private static final Set<String> COLLECTION_FQNS = Set.of(
+            List.class.getName(),
+            ArrayList.class.getName(),
+            LinkedList.class.getName(),
+            Set.class.getName(),
+            HashSet.class.getName(),
+            LinkedHashSet.class.getName(),
+            Collection.class.getName(),
+            Queue.class.getName(),
+            Deque.class.getName()
+        );
+
         @Override
         public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
             J.Annotation visited = super.visitAnnotation(annotation, ctx);
@@ -83,10 +142,10 @@ public class NullableSchemaRecipe extends Recipe {
                 return visited;
             }
 
-            String baseType = findStringArg(args, "type").orElse("string");
+            String baseType = findStringArg(args, "type").orElseGet(this::inferBaseType);
 
-            // Alle args außer 'nullable' und 'type' behalten
-            List<Expression> verbleibend = new ArrayList<>();
+            // Keep all args except 'nullable' and 'type'
+            List<Expression> remaining = new ArrayList<>();
             for (Expression arg : args) {
                 if (arg instanceof J.Assignment assignment) {
                     String key = extractKey(assignment);
@@ -94,14 +153,60 @@ public class NullableSchemaRecipe extends Recipe {
                         continue;
                     }
                 }
-                verbleibend.add(arg);
+                remaining.add(arg);
             }
 
-            // Neues types-Attribut als String-Array-Literal bauen
+            // Build new types attribute as a string array literal
             String typesCode = String.format("types = {\"%s\", \"null\"}", baseType);
-            J.Annotation neueAnnotation = buildAnnotationWithArgs(visited, verbleibend, typesCode);
+            return buildAnnotationWithArgs(visited, remaining, typesCode);
+        }
 
-            return neueAnnotation;
+        /**
+         * Infers the JSON Schema base type from the Java field or parameter type
+         * that carries the annotation. Falls back to {@code "string"} if the type
+         * cannot be determined.
+         */
+        private String inferBaseType() {
+            J.VariableDeclarations varDecls = getCursor().firstEnclosing(J.VariableDeclarations.class);
+            if (varDecls != null && !varDecls.getVariables().isEmpty()) {
+                JavaType javaType = varDecls.getVariables().get(0).getType();
+                String mapped = mapJavaTypeToOpenApi(javaType);
+                if (mapped != null) {
+                    return mapped;
+                }
+            }
+            return "string";
+        }
+
+        /**
+         * Maps a resolved {@link JavaType} to its JSON Schema type string.
+         * Returns {@code null} for unmappable types so the caller can fall back.
+         */
+        private static String mapJavaTypeToOpenApi(JavaType type) {
+            if (type instanceof JavaType.Primitive primitive) {
+                return switch (primitive) {
+                    case Boolean -> "boolean";
+                    case Int, Long, Short, Byte -> "integer";
+                    case Float, Double -> "number";
+                    case Char -> "string";
+                    default -> null;
+                };
+            }
+            if (type instanceof JavaType.Array) {
+                return "array";
+            }
+            if (type instanceof JavaType.Parameterized parameterized) {
+                return COLLECTION_FQNS.contains(parameterized.getType().getFullyQualifiedName())
+                    ? "array" : "object";
+            }
+            if (type instanceof JavaType.FullyQualified fq) {
+                String mapped = JAVA_TYPE_TO_OPENAPI.get(fq.getFullyQualifiedName());
+                if (mapped != null) return mapped;
+                if (COLLECTION_FQNS.contains(fq.getFullyQualifiedName())) return "array";
+                if (fq.getKind() == JavaType.FullyQualified.Kind.Enum) return "string";
+                return "object";
+            }
+            return null;
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -152,11 +257,11 @@ public class NullableSchemaRecipe extends Recipe {
 
         private J.Annotation buildAnnotationWithArgs(
             J.Annotation original,
-            List<Expression> verbleibend,
-            String neuerArgCode
+            List<Expression> remaining,
+            String newArgCode
         ) {
             var template = JavaTemplate
-                .builder("@Schema(" + buildArgString(verbleibend, neuerArgCode) + ")")
+                .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpath("swagger-annotations-jakarta"))
@@ -165,16 +270,16 @@ public class NullableSchemaRecipe extends Recipe {
             return template.apply(getCursor(), original.getCoordinates().replace());
         }
 
-        private String buildArgString(List<Expression> verbleibend, String neuerArgCode) {
-            if (verbleibend.isEmpty()) {
-                return neuerArgCode;
+        private String buildArgString(List<Expression> remaining, String newArgCode) {
+            if (remaining.isEmpty()) {
+                return newArgCode;
             }
             StringBuilder sb = new StringBuilder();
-            for (Expression expr : verbleibend) {
+            for (Expression expr : remaining) {
                 if (sb.length() > 0) sb.append(", ");
                 sb.append(expr.print(getCursor()).strip());
             }
-            sb.append(", ").append(neuerArgCode);
+            sb.append(", ").append(newArgCode);
             return sb.toString();
         }
     }

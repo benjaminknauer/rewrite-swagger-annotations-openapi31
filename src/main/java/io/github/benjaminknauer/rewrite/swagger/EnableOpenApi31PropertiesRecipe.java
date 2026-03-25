@@ -14,18 +14,18 @@ import java.util.Set;
 import java.util.List;
 
 /**
- * OpenRewrite-Rezept: Aktiviert OpenAPI 3.1 in springdoc-openapi 2.x.
+ * OpenRewrite recipe: enables OpenAPI 3.1 in springdoc-openapi 2.x.
  *
- * <p>springdoc-openapi 2.x exportiert standardmäßig OpenAPI 3.0. Um OpenAPI 3.1
- * zu aktivieren, muss in {@code application.properties} folgendes gesetzt werden:</p>
+ * <p>springdoc-openapi 2.x exports OpenAPI 3.0 by default. To enable OpenAPI 3.1,
+ * the following property must be set in {@code application.properties}:</p>
  * <pre>springdoc.api-docs.version=openapi_3_1</pre>
  *
- * <p>Dieses Rezept unterstützt sowohl {@code application.properties} als auch
+ * <p>This recipe supports both {@code application.properties} and
  * {@code application.yml}:</p>
  * <ul>
- *   <li>Ändert {@code openapi_3_0} → {@code openapi_3_1} falls der Eintrag bereits vorhanden ist</li>
- *   <li>Fügt den Eintrag hinzu falls er fehlt</li>
- *   <li>Lässt {@code openapi_3_1} unverändert (idempotent)</li>
+ *   <li>Updates {@code openapi_3_0} → {@code openapi_3_1} if the entry already exists</li>
+ *   <li>Adds the entry if it is missing</li>
+ *   <li>Leaves {@code openapi_3_1} unchanged (idempotent)</li>
  * </ul>
  */
 public class EnableOpenApi31PropertiesRecipe extends Recipe {
@@ -34,19 +34,19 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
     private static final String OA_31_VALUE = "openapi_3_1";
     private static final String OA_30_VALUE = "openapi_3_0";
 
-    // YAML-Pfad: $.springdoc.api-docs.version
+    // YAML path: $.springdoc.api-docs.version
     private static final String YAML_KEY_PATH = "$.springdoc.api-docs.version";
 
     @Override
     public String getDisplayName() {
-        return "Aktiviere OpenAPI 3.1 in springdoc application.properties / application.yml";
+        return "Enable OpenAPI 3.1 in springdoc application.properties / application.yml";
     }
 
     @Override
     public String getDescription() {
-        return "Setzt 'springdoc.api-docs.version=openapi_3_1' in application.properties bzw. application.yml. "
-            + "Aktualisiert einen vorhandenen 'openapi_3_0'-Eintrag und fügt den Schlüssel hinzu, falls er fehlt. "
-            + "Bereits korrekt konfigurierte Dateien werden nicht verändert (idempotent).";
+        return "Sets 'springdoc.api-docs.version=openapi_3_1' in application.properties or application.yml. "
+            + "Updates an existing 'openapi_3_0' entry and adds the key if it is missing. "
+            + "Already correctly configured files are not changed (idempotent).";
     }
 
     @Override
@@ -62,7 +62,7 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
     @Override
     public List<Recipe> getRecipeList() {
         return List.of(
-            // application.properties: bestehenden 3.0-Eintrag auf 3.1 aktualisieren
+            // application.properties: update existing 3.0 entry to 3.1
             new ChangePropertyValue(
                 PROPERTY_KEY,
                 OA_31_VALUE,
@@ -70,20 +70,20 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
                 false,
                 null
             ),
-            // application.properties: fehlenden Eintrag hinzufügen
+            // application.properties: add missing entry
             new AddProperty(
                 PROPERTY_KEY,
                 OA_31_VALUE,
                 null,
                 null
             ),
-            // application.yml: bestehenden Wert ändern (openapi_3_0 → openapi_3_1)
+            // application.yml: update existing value (openapi_3_0 → openapi_3_1)
             new ChangeValue(
                 YAML_KEY_PATH,
                 OA_31_VALUE,
                 null
             ),
-            // application.yml: fehlenden Eintrag als YAML-Fragment einfügen
+            // application.yml: insert missing entry as YAML fragment
             new MergeYaml(
                 "$.springdoc.api-docs",
                 "version: " + OA_31_VALUE,

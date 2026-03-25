@@ -1,19 +1,23 @@
 ---
-# Vollständige Migration — alle Sub-Rezepte aktiv (Standard)
+# Standard migration — all sub-recipes active, including example→examples
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
-displayName: Migriere springdoc-openapi 2.x Swagger-Annotationen auf OpenAPI 3.1
+displayName: Migrate springdoc-openapi 2.x Swagger annotations to OpenAPI 3.1
 description: >
-  Vollständige, konfigurierbare Migration von springdoc-openapi 2.x (OpenAPI 3.0) auf
-  OpenAPI 3.1. Alle vier Sub-Rezepte sind per Option aktivierbar/deaktivierbar.
-  Standard (wenn eine Option fehlt oder null ist): aktiviert.
+  Configurable migration of springdoc-openapi 2.x (OpenAPI 3.0) to OpenAPI 3.1.
+  Migrates nullable, exclusiveMinimum/Maximum, the springdoc properties entry,
+  and the deprecated example field (example→examples).
 
-  Optionen:
-    enableOpenApi31Properties: Setzt springdoc.api-docs.version=openapi_3_1 in
-      application.properties und application.yml (default: true).
-    migrateNullable: @Schema(nullable=true) → types={"T","null"} (default: true).
+  Options:
+    enableOpenApi31Properties: Sets springdoc.api-docs.version=openapi_3_1 in
+      application.properties and application.yml (default: true).
+    migrateNullable: Migrate @Schema(nullable=true); strategy controlled by useJSpecifyNullable (default: true).
+    useJSpecifyNullable: true (default) → @Nullable for fields without explicit type=,
+      @Schema(types={"T","null"}) for fields with explicit type=.
+      false → always @Schema(types={"T","null"}) (no new dependency).
     migrateExclusiveMinMax: minimum+exclusiveMinimum=true → exclusiveMinimumValue=X (int) (default: true).
     migrateExamples: @Schema(example="X") → examples={"X"} (default: true).
+      Set to false if any consumers of your API spec look for the singular 'example' field.
 tags:
   - openapi
   - swagger
@@ -22,15 +26,16 @@ tags:
 estimatedEffortPerOccurrence: PT15M
 
 ---
-# Nur Annotations-Migration — Konfigurationsdateien werden nicht angefasst
+# Annotations only — configuration files are not touched (JSpecify nullable)
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31AnnotationsOnlyRecipe
-displayName: Migriere springdoc-openapi Swagger-Annotationen auf OpenAPI 3.1 (ohne properties/yml)
+displayName: Migrate springdoc-openapi Swagger annotations to OpenAPI 3.1 (without properties/yml)
 description: >
-  Migriert nur Java-Annotationen (@Schema nullable, exclusiveMinimum/Maximum, example)
-  auf OpenAPI 3.1. application.properties und application.yml werden nicht verändert.
-  Geeignet, wenn die Konfiguration bereits manuell gesetzt wurde oder über
-  ein separates Konfigurations-Management verwaltet wird.
+  Migrates only Java annotations (@Schema nullable → @Nullable, exclusiveMinimum/Maximum, example)
+  to OpenAPI 3.1. application.properties and application.yml are not changed.
+  Suitable when the configuration has already been set manually or is managed
+  by a separate configuration management system.
+  Uses JSpecify @Nullable for nullable fields without an explicit type (useJSpecifyNullable: true).
 tags:
   - openapi
   - swagger
@@ -40,21 +45,18 @@ estimatedEffortPerOccurrence: PT10M
 recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
       enableOpenApi31Properties: false
-      migrateNullable: true
-      migrateExclusiveMinMax: true
-      migrateExamples: true
 
 ---
-# Minimale Migration — ohne example-Migration
+# Minimal migration — without example migration (JSpecify nullable)
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31MinimalRecipe
-displayName: Migriere springdoc-openapi 2.x auf OpenAPI 3.1 (minimal — ohne example)
+displayName: Migrate springdoc-openapi 2.x to OpenAPI 3.1 (minimal — without example)
 description: >
-  Führt nur die kritischsten Migrationen durch: application.properties/yml,
-  nullable und exclusiveMinimum/Maximum.
-  Die example→examples Migration wird bewusst übersprungen — sinnvoll, wenn
-  example-Werte noch manuell überprüft werden sollen, bevor sie als Array
-  deklariert werden.
+  Performs only the migrations required for OA 3.1 correctness: application.properties/yml,
+  nullable and exclusiveMinimum/Maximum. The example→examples migration is intentionally
+  excluded — use this preset if any consumers of your API spec look for the singular
+  'example' field and cannot yet handle the 'examples' array form.
+  Uses JSpecify @Nullable for nullable fields without an explicit type (useJSpecifyNullable: true).
 tags:
   - openapi
   - swagger
@@ -63,7 +65,62 @@ tags:
 estimatedEffortPerOccurrence: PT10M
 recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
-      enableOpenApi31Properties: true
-      migrateNullable: true
-      migrateExclusiveMinMax: true
       migrateExamples: false
+
+---
+# Types-array migration — @Schema(nullable=true) → @Schema(types={"T","null"}) for all fields
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31TypesArrayRecipe
+displayName: Migrate springdoc-openapi 2.x to OpenAPI 3.1 (types-array nullable)
+description: >
+  Full migration using the types-array strategy for all nullable fields:
+  @Schema(nullable=true) → @Schema(types={"T","null"}) regardless of whether
+  an explicit 'type' attribute is present. No new runtime dependency is added.
+  Use SpringdocOpenApi31Recipe (default) instead if you prefer @Nullable (JSpecify).
+tags:
+  - openapi
+  - swagger
+  - springdoc
+  - migration
+estimatedEffortPerOccurrence: PT15M
+recipeList:
+  - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      useJSpecifyNullable: false
+
+---
+# Types-array minimal — without example migration
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31TypesArrayMinimalRecipe
+displayName: Migrate springdoc-openapi 2.x to OpenAPI 3.1 (types-array, without example)
+description: >
+  Performs only the migrations required for OA 3.1 correctness using the types-array
+  nullable strategy. The example→examples migration is excluded.
+tags:
+  - openapi
+  - swagger
+  - springdoc
+  - migration
+estimatedEffortPerOccurrence: PT10M
+recipeList:
+  - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      useJSpecifyNullable: false
+      migrateExamples: false
+
+---
+# Types-array annotations only — configuration files are not touched
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31TypesArrayAnnotationsOnlyRecipe
+displayName: Migrate springdoc-openapi Swagger annotations to OpenAPI 3.1 (types-array, without properties/yml)
+description: >
+  Migrates only Java annotations to OpenAPI 3.1 using the types-array nullable strategy.
+  application.properties and application.yml are not changed.
+tags:
+  - openapi
+  - swagger
+  - springdoc
+  - migration
+estimatedEffortPerOccurrence: PT10M
+recipeList:
+  - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      enableOpenApi31Properties: false
+      useJSpecifyNullable: false
