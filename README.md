@@ -49,8 +49,8 @@ Each recipe is idempotent (already-migrated code is left untouched) and preserve
 
 | Recipe | What it does |
 |--------|-------------|
-| `NullableSchemaRecipe` | `@Schema(nullable = true)` → `@Schema(types = {"T", "null"})` |
-| `SchemaToJSpecifyNullableRecipe` | `@Schema(nullable = true)` → `@org.jspecify.annotations.Nullable` (alternative — see below) |
+| `SchemaToJSpecifyNullableRecipe` | `@Schema(nullable = true)` → `@org.jspecify.annotations.Nullable` — **recommended** (see [nullable strategy](#nullable-migration-strategy)) |
+| `NullableSchemaRecipe` | `@Schema(nullable = true)` → `@Schema(types = {"T", "null"})` — alternative, no new dependency |
 | `ExclusiveMinMaxRecipe` | `@Schema(minimum = "X", exclusiveMinimum = true)` → `@Schema(exclusiveMinimumValue = X)` |
 | `ExampleMigrationRecipe` | `@Schema(example = "X")` → `@Schema(examples = {"X"})` |
 | `EnableOpenApi31PropertiesRecipe` | Sets `springdoc.api-docs.version=openapi_3_1` in `application.properties` **and** `application.yml` |
