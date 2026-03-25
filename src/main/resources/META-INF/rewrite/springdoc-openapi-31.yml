@@ -1,0 +1,58 @@
+---
+# Vollständige Migration — alle Sub-Rezepte aktiv (Standard)
+type: specs.openrewrite.org/v1beta/recipe
+name: com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
+displayName: Migriere springdoc-openapi 2.x auf OpenAPI 3.1
+description: >
+  Vollständige, konfigurierbare Migration von springdoc-openapi 2.x (OpenAPI 3.0) auf
+  OpenAPI 3.1. Alle vier Sub-Rezepte sind per Option aktivierbar/deaktivierbar.
+  Standard (wenn eine Option fehlt): aktiviert.
+
+  Optionen:
+    enableOpenApi31Properties: Setzt springdoc.api-docs.version=openapi_3_1 (default: true)
+    migrateNullable:           @Schema(nullable=true) → types={"T","null"}  (default: true)
+    migrateExclusiveMinMax:    minimum+exclusiveMinimum=true → exclusiveMinimum="X" (default: true)
+    migrateExamples:           @Schema(example="X") → examples={"X"}       (default: true)
+tags:
+  - openapi
+  - springdoc
+  - migration
+
+---
+# Nur Annotations-Migration — application.properties wird nicht angefasst
+type: specs.openrewrite.org/v1beta/recipe
+name: com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31AnnotationsOnlyRecipe
+displayName: Migriere springdoc-openapi Annotationen auf OpenAPI 3.1 (ohne properties)
+description: >
+  Migriert nur Java-Annotationen (@Schema nullable, exclusiveMinMax, example),
+  lässt application.properties unverändert.
+tags:
+  - openapi
+  - springdoc
+  - migration
+recipeList:
+  - com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      enableOpenApi31Properties: false
+      migrateNullable: true
+      migrateExclusiveMinMax: true
+      migrateExamples: true
+
+---
+# Nur nullable + properties, ohne example-Migration
+type: specs.openrewrite.org/v1beta/recipe
+name: com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31MinimalRecipe
+displayName: Migriere springdoc-openapi 2.x auf OpenAPI 3.1 (minimal — ohne example)
+description: >
+  Führt nur die kritischsten Migrationen durch:
+  application.properties, nullable und exclusiveMinMax.
+  example→examples wird bewusst übersprungen.
+tags:
+  - openapi
+  - springdoc
+  - migration
+recipeList:
+  - com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
+      enableOpenApi31Properties: true
+      migrateNullable: true
+      migrateExclusiveMinMax: true
+      migrateExamples: false
