@@ -20,7 +20,7 @@ OpenAPI 3.1 basiert vollständig auf JSON Schema Draft 2020-12. Die wichtigsten 
 | `NullableSchemaRecipe` | `@Schema(nullable = true)` → `@Schema(types = {"T", "null"})` |
 | `ExclusiveMinMaxRecipe` | `@Schema(minimum = "X", exclusiveMinimum = true)` → `@Schema(exclusiveMinimumValue = X)` |
 | `ExampleMigrationRecipe` | `@Schema(example = "X")` → `@Schema(examples = {"X"})` |
-| `EnableOpenApi31PropertiesRecipe` | Setzt `springdoc.api-docs.version=openapi_3_1` in `application.properties` |
+| `EnableOpenApi31PropertiesRecipe` | Setzt `springdoc.api-docs.version=openapi_3_1` in `application.properties` **und** `application.yml` |
 | `SpringdocOpenApi31Recipe` | **Composite** — führt alle obigen Rezepte aus (einzeln konfigurierbar) |
 
 ## Voraussetzungen
@@ -150,6 +150,22 @@ springdoc.api-docs.version=openapi_3_0
 springdoc.api-docs.version=openapi_3_1
 ```
 
+### application.yml
+
+```yaml
+# Vorher
+springdoc:
+  api-docs:
+    version: openapi_3_0
+
+# Nachher
+springdoc:
+  api-docs:
+    version: openapi_3_1
+```
+
+Fehlt der Eintrag komplett, wird er in beiden Formaten automatisch ergänzt.
+
 ## Projektstruktur
 
 ```
@@ -166,6 +182,8 @@ src/
     ├── NullableSchemaRecipeTest.java           # 7 Tests
     ├── ExclusiveMinMaxRecipeTest.java          # 7 Tests
     ├── ExampleMigrationRecipeTest.java         # 8 Tests
-    ├── EnableOpenApi31PropertiesRecipeTest.java # 4 Tests
+    ├── EnableOpenApi31PropertiesRecipeTest.java # 7 Tests (properties + yaml)
     └── SpringdocOpenApi31RecipeTest.java       # 13 Tests (inkl. @Nested Konfiguration)
+                                               # Gesamt: 39 Tests
+
 ```
