@@ -10,9 +10,11 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * OpenRewrite-Rezept: Migriert {@code @Schema(example = "foo")} von OpenAPI 3.0
@@ -43,8 +45,20 @@ public class ExampleMigrationRecipe extends Recipe {
 
     @Override
     public String getDescription() {
-        return "Ersetzt das OpenAPI-3.0-Attribut 'example' in @Schema-Annotationen "
-            + "durch das OpenAPI-3.1-konforme 'examples = {\"...\"}'-Array.";
+        return "Ersetzt das singuläre OpenAPI-3.0-Attribut 'example = \"X\"' in @Schema-Annotationen "
+            + "durch das OpenAPI-3.1-konforme Array 'examples = {\"X\"}'. "
+            + "Alle anderen Attribute bleiben erhalten. "
+            + "Ist bereits ein 'examples'-Attribut vorhanden, wird die Annotation nicht verändert (idempotent).";
+    }
+
+    @Override
+    public Set<String> getTags() {
+        return Set.of("openapi", "swagger", "springdoc", "migration");
+    }
+
+    @Override
+    public Duration getEstimatedEffortPerOccurrence() {
+        return Duration.ofMinutes(5);
     }
 
     @Override

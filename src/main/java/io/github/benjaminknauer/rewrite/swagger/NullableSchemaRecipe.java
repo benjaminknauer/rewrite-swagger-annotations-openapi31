@@ -10,9 +10,11 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * OpenRewrite-Rezept: Migriert {@code @Schema(nullable = true)} von OpenAPI 3.0
@@ -42,7 +44,18 @@ public class NullableSchemaRecipe extends Recipe {
     @Override
     public String getDescription() {
         return "Ersetzt das OpenAPI-3.0-Attribut 'nullable = true' in @Schema-Annotationen "
-            + "durch das OpenAPI-3.1-konforme 'types = {\"T\", \"null\"}'-Array.";
+            + "durch das OpenAPI-3.1-konforme 'types = {\"T\", \"null\"}'-Array. "
+            + "Ein vorhandenes 'type'-Attribut wird dabei übernommen; fehlt es, wird 'string' als Typ angenommen.";
+    }
+
+    @Override
+    public Set<String> getTags() {
+        return Set.of("openapi", "swagger", "springdoc", "migration");
+    }
+
+    @Override
+    public Duration getEstimatedEffortPerOccurrence() {
+        return Duration.ofMinutes(5);
     }
 
     @Override

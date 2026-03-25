@@ -2,34 +2,41 @@
 # Vollständige Migration — alle Sub-Rezepte aktiv (Standard)
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
-displayName: Migriere springdoc-openapi 2.x auf OpenAPI 3.1
+displayName: Migriere springdoc-openapi 2.x Swagger-Annotationen auf OpenAPI 3.1
 description: >
   Vollständige, konfigurierbare Migration von springdoc-openapi 2.x (OpenAPI 3.0) auf
   OpenAPI 3.1. Alle vier Sub-Rezepte sind per Option aktivierbar/deaktivierbar.
-  Standard (wenn eine Option fehlt): aktiviert.
+  Standard (wenn eine Option fehlt oder null ist): aktiviert.
 
   Optionen:
-    enableOpenApi31Properties: Setzt springdoc.api-docs.version=openapi_3_1 (default: true)
-    migrateNullable:           @Schema(nullable=true) → types={"T","null"}  (default: true)
-    migrateExclusiveMinMax:    minimum+exclusiveMinimum=true → exclusiveMinimum="X" (default: true)
-    migrateExamples:           @Schema(example="X") → examples={"X"}       (default: true)
+    enableOpenApi31Properties: Setzt springdoc.api-docs.version=openapi_3_1 in
+      application.properties und application.yml (default: true).
+    migrateNullable: @Schema(nullable=true) → types={"T","null"} (default: true).
+    migrateExclusiveMinMax: minimum+exclusiveMinimum=true → exclusiveMinimumValue=X (int) (default: true).
+    migrateExamples: @Schema(example="X") → examples={"X"} (default: true).
 tags:
   - openapi
+  - swagger
   - springdoc
   - migration
+estimatedEffortPerOccurrence: PT15M
 
 ---
-# Nur Annotations-Migration — application.properties wird nicht angefasst
+# Nur Annotations-Migration — Konfigurationsdateien werden nicht angefasst
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31AnnotationsOnlyRecipe
-displayName: Migriere springdoc-openapi Annotationen auf OpenAPI 3.1 (ohne properties)
+displayName: Migriere springdoc-openapi Swagger-Annotationen auf OpenAPI 3.1 (ohne properties/yml)
 description: >
-  Migriert nur Java-Annotationen (@Schema nullable, exclusiveMinMax, example),
-  lässt application.properties unverändert.
+  Migriert nur Java-Annotationen (@Schema nullable, exclusiveMinimum/Maximum, example)
+  auf OpenAPI 3.1. application.properties und application.yml werden nicht verändert.
+  Geeignet, wenn die Konfiguration bereits manuell gesetzt wurde oder über
+  ein separates Konfigurations-Management verwaltet wird.
 tags:
   - openapi
+  - swagger
   - springdoc
   - migration
+estimatedEffortPerOccurrence: PT10M
 recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
       enableOpenApi31Properties: false
@@ -38,18 +45,22 @@ recipeList:
       migrateExamples: true
 
 ---
-# Nur nullable + properties, ohne example-Migration
+# Minimale Migration — ohne example-Migration
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31MinimalRecipe
 displayName: Migriere springdoc-openapi 2.x auf OpenAPI 3.1 (minimal — ohne example)
 description: >
-  Führt nur die kritischsten Migrationen durch:
-  application.properties, nullable und exclusiveMinMax.
-  example→examples wird bewusst übersprungen.
+  Führt nur die kritischsten Migrationen durch: application.properties/yml,
+  nullable und exclusiveMinimum/Maximum.
+  Die example→examples Migration wird bewusst übersprungen — sinnvoll, wenn
+  example-Werte noch manuell überprüft werden sollen, bevor sie als Array
+  deklariert werden.
 tags:
   - openapi
+  - swagger
   - springdoc
   - migration
+estimatedEffortPerOccurrence: PT10M
 recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
       enableOpenApi31Properties: true

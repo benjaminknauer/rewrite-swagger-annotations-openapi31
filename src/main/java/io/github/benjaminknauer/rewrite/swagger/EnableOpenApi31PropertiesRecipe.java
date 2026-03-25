@@ -8,6 +8,8 @@ import org.openrewrite.properties.ChangePropertyValue;
 import org.openrewrite.yaml.ChangeValue;
 import org.openrewrite.yaml.MergeYaml;
 
+import java.time.Duration;
+import java.util.Set;
 
 import java.util.List;
 
@@ -37,13 +39,24 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Aktiviere OpenAPI 3.1 in springdoc application.properties";
+        return "Aktiviere OpenAPI 3.1 in springdoc application.properties / application.yml";
     }
 
     @Override
     public String getDescription() {
-        return "Setzt 'springdoc.api-docs.version=openapi_3_1' in application.properties. "
-            + "Fügt den Eintrag hinzu falls er fehlt; aktualisiert ihn falls er auf 3.0 steht.";
+        return "Setzt 'springdoc.api-docs.version=openapi_3_1' in application.properties bzw. application.yml. "
+            + "Aktualisiert einen vorhandenen 'openapi_3_0'-Eintrag und fügt den Schlüssel hinzu, falls er fehlt. "
+            + "Bereits korrekt konfigurierte Dateien werden nicht verändert (idempotent).";
+    }
+
+    @Override
+    public Set<String> getTags() {
+        return Set.of("openapi", "swagger", "springdoc", "migration");
+    }
+
+    @Override
+    public Duration getEstimatedEffortPerOccurrence() {
+        return Duration.ofMinutes(2);
     }
 
     @Override

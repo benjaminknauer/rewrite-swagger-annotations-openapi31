@@ -8,8 +8,10 @@ import org.openrewrite.Option;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * OpenRewrite-Composite-Rezept: Vollständige, konfigurierbare Migration von
@@ -39,32 +41,47 @@ import java.util.List;
 public class SpringdocOpenApi31Recipe extends Recipe {
 
     @Option(
-        displayName = "OA 3.1 in application.properties aktivieren",
-        description = "Setzt 'springdoc.api-docs.version=openapi_3_1' in application.properties.",
+        displayName = "application.properties / application.yml aktualisieren",
+        description = "Setzt 'springdoc.api-docs.version=openapi_3_1' in application.properties "
+            + "bzw. application.yml. Fügt den Eintrag hinzu, falls er fehlt. "
+            + "Auf 'false' setzen, wenn die Konfigurationsdatei nicht verändert werden soll.",
+        example = "true",
         required = false
     )
     @Nullable
     private final Boolean enableOpenApi31Properties;
 
     @Option(
-        displayName = "nullable migrieren",
-        description = "Migriert @Schema(nullable=true) zu @Schema(types={\"T\",\"null\"}).",
+        displayName = "@Schema(nullable=true) migrieren",
+        description = "Ersetzt 'nullable = true' durch 'types = {\"string\", \"null\"}' (bzw. den "
+            + "deklarierten Typ). In OpenAPI 3.1 / JSON Schema 2020-12 gibt es kein 'nullable' mehr. "
+            + "Auf 'false' setzen, wenn diese Migration übersprungen werden soll.",
+        example = "true",
         required = false
     )
     @Nullable
     private final Boolean migrateNullable;
 
     @Option(
-        displayName = "exclusiveMinimum/exclusiveMaximum migrieren",
-        description = "Migriert das Legacy-Pattern minimum+exclusiveMinimum=true zu exclusiveMinimum=\"X\".",
+        displayName = "exclusiveMinimum / exclusiveMaximum migrieren",
+        description = "Ersetzt das OpenAPI-3.0-Pattern '@Schema(minimum = \"X\", exclusiveMinimum = true)' "
+            + "durch '@Schema(exclusiveMinimumValue = X)' (int). In OpenAPI 3.1 sind exclusiveMinimum und "
+            + "exclusiveMaximum numerische Werte, keine Boolean-Flags mehr. "
+            + "Nicht-ganzzahlige Werte werden übersprungen. "
+            + "Auf 'false' setzen, wenn diese Migration übersprungen werden soll.",
+        example = "true",
         required = false
     )
     @Nullable
     private final Boolean migrateExclusiveMinMax;
 
     @Option(
-        displayName = "example zu examples migrieren",
-        description = "Migriert @Schema(example=\"X\") zu @Schema(examples={\"X\"}).",
+        displayName = "@Schema(example=...) migrieren",
+        description = "Ersetzt das singuläre 'example = \"X\"' durch 'examples = {\"X\"}'. "
+            + "In JSON Schema Draft 2020-12 (Basis von OpenAPI 3.1) ist 'examples' ein Array. "
+            + "Bereits vorhandene 'examples'-Attribute werden nicht verändert (idempotent). "
+            + "Auf 'false' setzen, wenn diese Migration übersprungen werden soll.",
+        example = "true",
         required = false
     )
     @Nullable
@@ -90,13 +107,25 @@ public class SpringdocOpenApi31Recipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Migriere springdoc-openapi 2.x auf OpenAPI 3.1";
+        return "Migriere springdoc-openapi 2.x Swagger-Annotationen auf OpenAPI 3.1";
     }
 
     @Override
     public String getDescription() {
         return "Vollständige, konfigurierbare Migration von springdoc-openapi 2.x (OpenAPI 3.0) "
-            + "auf OpenAPI 3.1. Jedes Sub-Rezept kann einzeln aktiviert oder deaktiviert werden.";
+            + "auf OpenAPI 3.1: nullable, exclusiveMinimum/Maximum, example und "
+            + "springdoc.api-docs.version werden automatisch migriert. "
+            + "Jedes Sub-Rezept kann einzeln aktiviert oder deaktiviert werden.";
+    }
+
+    @Override
+    public Set<String> getTags() {
+        return Set.of("openapi", "swagger", "springdoc", "migration");
+    }
+
+    @Override
+    public Duration getEstimatedEffortPerOccurrence() {
+        return Duration.ofMinutes(15);
     }
 
     @Override

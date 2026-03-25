@@ -10,10 +10,12 @@ import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 
 /**
  * OpenRewrite-Rezept: Migriert das Legacy-Pattern
@@ -51,9 +53,20 @@ public class ExclusiveMinMaxRecipe extends Recipe {
 
     @Override
     public String getDescription() {
-        return "Ersetzt das OA-3.0-Pattern 'minimum + exclusiveMinimum = true' durch "
-            + "das swagger-core-v3-konforme 'exclusiveMinimumValue = X' (int). "
-            + "Nicht ganzzahlige Werte werden übersprungen.";
+        return "Ersetzt das OpenAPI-3.0-Pattern '@Schema(minimum = \"X\", exclusiveMinimum = true)' "
+            + "durch das OpenAPI-3.1-konforme '@Schema(exclusiveMinimumValue = X)' (int-Attribut). "
+            + "Analog für maximum/exclusiveMaximum → exclusiveMaximumValue. "
+            + "Nicht-ganzzahlige Werte (z.B. '1.5') werden übersprungen, da exclusiveMinimumValue ein int ist.";
+    }
+
+    @Override
+    public Set<String> getTags() {
+        return Set.of("openapi", "swagger", "springdoc", "migration");
+    }
+
+    @Override
+    public Duration getEstimatedEffortPerOccurrence() {
+        return Duration.ofMinutes(5);
     }
 
     @Override
