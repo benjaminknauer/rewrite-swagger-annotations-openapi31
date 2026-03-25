@@ -46,8 +46,8 @@ Direkt via Maven-Plugin:
 ```bash
 cd mein-spring-projekt/
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
-  -Drewrite.recipeArtifactCoordinates=com.benjaminknauer:rewrite-swagger-annotations-openapi31:1.0.0-SNAPSHOT \
-  -Drewrite.activeRecipes=com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:1.0.0-SNAPSHOT \
+  -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
 ```
 
 Oder als Plugin in der `pom.xml` des Zielprojekts:
@@ -59,12 +59,12 @@ Oder als Plugin in der `pom.xml` des Zielprojekts:
     <version>5.x</version>
     <configuration>
         <activeRecipes>
-            <recipe>com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
+            <recipe>io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
         </activeRecipes>
     </configuration>
     <dependencies>
         <dependency>
-            <groupId>com.benjaminknauer</groupId>
+            <groupId>io.github.benjaminknauer</groupId>
             <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
@@ -76,13 +76,13 @@ Oder als Plugin in der `pom.xml` des Zielprojekts:
 
 ```xml
 <activeRecipes>
-    <recipe>com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
+    <recipe>io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
 </activeRecipes>
 <recipeOptions>
     <!-- Alle Optionen sind optional; Standard: true (aktiviert) -->
-    <com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
+    <io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
         <migrateExamples>false</migrateExamples>
-    </com.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
+    </io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe>
 </recipeOptions>
 ```
 

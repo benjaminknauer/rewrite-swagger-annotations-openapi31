@@ -1,4 +1,4 @@
-package com.benjaminknauer.rewrite.swagger;
+package io.github.benjaminknauer.rewrite.swagger;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

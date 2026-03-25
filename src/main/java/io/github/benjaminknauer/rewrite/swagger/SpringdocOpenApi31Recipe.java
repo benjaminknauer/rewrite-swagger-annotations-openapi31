@@ -1,4 +1,4 @@
-package com.benjaminknauer.rewrite.swagger;
+package io.github.benjaminknauer.rewrite.swagger;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
