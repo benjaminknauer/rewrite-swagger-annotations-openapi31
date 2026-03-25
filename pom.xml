@@ -6,7 +6,7 @@
 
     <groupId>io.github.benjaminknauer</groupId>
     <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <name>rewrite-swagger-annotations-openapi31</name>
@@ -37,7 +37,7 @@
         <connection>scm:git:git://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31.git</connection>
         <developerConnection>scm:git:ssh://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31.git</developerConnection>
         <url>https://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31</url>
-        <tag>v1.0.0</tag>
+        <tag>v0.1.0</tag>
     </scm>
 
     <properties>
