@@ -6,14 +6,39 @@
 
     <groupId>io.github.benjaminknauer</groupId>
     <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>OpenAPI 3.1 Migration Recipe</name>
+    <name>rewrite-swagger-annotations-openapi31</name>
     <description>
-        OpenRewrite-Rezept zur Migration von springdoc-openapi 2.x (OpenAPI 3.0)
-        auf OpenAPI 3.1 — migriert Annotationen und Konfiguration automatisiert.
+        OpenRewrite recipes to migrate Swagger annotations (io.swagger.v3.oas.annotations)
+        from OpenAPI 3.0 to OpenAPI 3.1 — nullable, exclusiveMinimum/Maximum, example and
+        springdoc application.properties/yml.
     </description>
+    <url>https://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>benjaminknauer</id>
+            <name>Benjamin Knauer</name>
+            <url>https://github.com/benjaminknauer</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31.git</connection>
+        <developerConnection>scm:git:ssh://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31.git</developerConnection>
+        <url>https://github.com/benjaminknauer/rewrite-swagger-annotations-openapi31</url>
+        <tag>v1.0.0</tag>
+    </scm>
 
     <properties>
         <java.version>21</java.version>
@@ -62,7 +87,7 @@
             <artifactId>rewrite-yaml</artifactId>
         </dependency>
 
-        <!-- springdoc-Annotationstypen für Typ-Prüfungen im Classpath (auch zur Testlaufzeit nötig) -->
+        <!-- swagger-annotations: Typ-Prüfungen im Classpath (auch zur Testlaufzeit nötig) -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -131,6 +156,61 @@
                     </argLine>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.10.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.6.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
