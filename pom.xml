@@ -150,10 +150,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
                 <configuration>
-                    <!-- rewrite-java-17/21 nutzen interne JDK-Compiler-Klassen
-                         (com.sun.tools.javac), die in JDK 25 nicht mehr existieren.
-                         Tests werden daher in einer separaten JVM unter JDK 21 geforkt. -->
-                    <jvm>${env.JAVA21_HOME}/bin/java</jvm>
                     <forkCount>1</forkCount>
                     <reuseForks>false</reuseForks>
                     <argLine>

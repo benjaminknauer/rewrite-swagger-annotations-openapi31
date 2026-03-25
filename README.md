@@ -84,15 +84,6 @@ Use a `Minimal` variant if any API consumers cannot yet handle the `examples` ar
 - Maven 3.9+
 - springdoc-openapi 2.x in the target project
 
-### Building and testing this recipe project
-
-The recipe's own tests require JDK 21 (the `rewrite-java-17` module uses `--add-opens` flags that are
-incompatible with JDK 25+ when running via Surefire). Set `JAVA21_HOME` before running `mvn test`:
-
-```bash
-export JAVA21_HOME=/path/to/jdk21
-mvn clean test
-```
 
 ## Usage
 
