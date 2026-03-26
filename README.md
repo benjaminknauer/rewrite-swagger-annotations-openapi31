@@ -7,11 +7,12 @@ OpenRewrite recipe for automated migration of **Swagger annotations** (`io.swagg
 
 ## What It Migrates
 
-OpenAPI 3.1 is fully aligned with JSON Schema Draft 2020-12. The recipe handles four changes:
+OpenAPI 3.1 is fully aligned with JSON Schema Draft 2020-12. The recipe handles five changes:
 
 | OA 3.0 | OA 3.1 |
 |--------|--------|
 | `@Schema(nullable = true)` | `@Nullable` (JSpecify, default) **or** `@Schema(types = {"T", "null"})` |
+| `@Schema(type = "X")` | `@Schema(types = {"X"})` |
 | `@Schema(minimum = "X", exclusiveMinimum = true)` | `@Schema(exclusiveMinimumValue = X)` |
 | `@Schema(example = "X")` | `@Schema(examples = {"X"})` |
 | `springdoc.api-docs.version=openapi_3_0` | `springdoc.api-docs.version=openapi_3_1` |
@@ -78,6 +79,7 @@ recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
       migrateExamples: false
       useJSpecifyNullable: false
+      migrateSingleType: false
 ```
 
 Then configure the plugin as in Option B and activate `com.mycompany.OpenApi31Migration`.
@@ -91,6 +93,7 @@ Then configure the plugin as in Option B and activate `com.mycompany.OpenApi31Mi
 | `useJSpecifyNullable` | Boolean | `true` | `true`: `@Nullable` for fields without explicit `type=`. `false`: always `@Schema(types={"T","null"})` (no new dependency) |
 | `migrateExclusiveMinMax` | Boolean | `true` | `minimum+exclusiveMinimum=true` → `exclusiveMinimumValue` |
 | `migrateExamples` | Boolean | `true` | `example="X"` → `examples={"X"}` |
+| `migrateSingleType` | Boolean | `true` | `type="X"` → `types={"X"}` (runs after nullable migration) |
 
 ## Transformation Examples
 
@@ -124,6 +127,20 @@ private String name;
 @Schema(types = {"string", "null"})
 private String email;
 ```
+
+### type → types array
+
+```java
+// Before (OA 3.0)
+@Schema(type = "string", description = "ISO 4217 currency code")
+private String currency;
+
+// After (OA 3.1)
+@Schema(description = "ISO 4217 currency code", types = {"string"})
+private String currency;
+```
+
+Annotations with `nullable = true` are not affected by this option — they are handled by the nullable migration above, which produces `types = {"T", "null"}`.
 
 ### exclusiveMinimum / exclusiveMaximum
 
