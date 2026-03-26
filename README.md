@@ -78,7 +78,7 @@ name: com.mycompany.OpenApi31Migration
 recipeList:
   - io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe:
       migrateExamples: false
-      useJSpecifyNullable: false
+      useNullableAnnotation: false
       migrateSingleType: false
 ```
 
@@ -89,8 +89,10 @@ Then configure the plugin as in Option B and activate `com.mycompany.OpenApi31Mi
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `enableOpenApi31Properties` | Boolean | `true` | Set `springdoc.api-docs.version=openapi_3_1` in properties/yml |
-| `migrateNullable` | Boolean | `true` | Migrate `nullable=true`; strategy controlled by `useJSpecifyNullable` |
-| `useJSpecifyNullable` | Boolean | `true` | `true`: `@Nullable` for fields without explicit `type=`. `false`: always `@Schema(types={"T","null"})` (no new dependency) |
+| `migrateNullable` | Boolean | `true` | Migrate `nullable=true`; strategy controlled by `useNullableAnnotation` |
+| `useNullableAnnotation` | Boolean | `true` | `true`: introduce a `@Nullable` annotation for fields without explicit `type=`. `false`: always use `@Schema(types={"T","null"})` (no new dependency) |
+| `nullableAnnotation` | String | `org.jspecify.annotations.Nullable` | Fully qualified name of the `@Nullable` annotation to introduce. Only applies when `useNullableAnnotation` is `true`. Common alternatives: `org.springframework.lang.Nullable`, `jakarta.annotation.Nullable`, `org.jetbrains.annotations.Nullable` |
+| `addJSpecifyDependency` | Boolean | `true` | When `useNullableAnnotation` is `true` and the default JSpecify annotation is used: add `org.jspecify:jspecify` to `pom.xml`. Set to `false` when jspecify already arrives as a transitive dependency |
 | `migrateExclusiveMinMax` | Boolean | `true` | `minimum+exclusiveMinimum=true` → `exclusiveMinimumValue` |
 | `migrateExamples` | Boolean | `true` | `example="X"` → `examples={"X"}` |
 | `migrateSingleType` | Boolean | `true` | `type="X"` → `types={"X"}` (runs after nullable migration) |
@@ -99,7 +101,7 @@ Then configure the plugin as in Option B and activate `com.mycompany.OpenApi31Mi
 
 ### nullable
 
-Default strategy (`useJSpecifyNullable: true`):
+Default strategy (`useNullableAnnotation: true`):
 
 ```java
 // Before (OA 3.0)
@@ -117,7 +119,7 @@ private String name;
 private String email;
 ```
 
-Types-array strategy (`useJSpecifyNullable: false`):
+Types-array strategy (`useNullableAnnotation: false`):
 
 ```java
 // After — types array for all fields (no new dependency)
@@ -136,7 +138,7 @@ private String email;
 private String currency;
 
 // After (OA 3.1)
-@Schema(description = "ISO 4217 currency code", types = {"string"})
+@Schema(types = {"string"}, description = "ISO 4217 currency code")
 private String currency;
 ```
 
@@ -180,10 +182,11 @@ If the entry is missing, it is automatically added.
 The recipe applies the best strategy per field:
 
 - **`@Schema` with explicit `type`**: always converts to `@Schema(types = {"T", "null"})`.
-- **`@Schema` without `type`** (default `useJSpecifyNullable=true`): replaces with `@org.jspecify.annotations.Nullable`. springdoc-openapi infers the correct types array at runtime.
-- The `org.jspecify:jspecify` dependency is added to `pom.xml` automatically when `@Nullable` is introduced (idempotent, via `onlyIfUsing` guard).
+- **`@Schema` without `type`** (default `useNullableAnnotation=true`): replaces with a `@Nullable` annotation (default: `org.jspecify.annotations.Nullable`). springdoc-openapi infers the correct types array at runtime.
+- The `org.jspecify:jspecify` dependency is added to `pom.xml` automatically when the default JSpecify annotation is introduced (idempotent). Set `addJSpecifyDependency: false` to skip this when jspecify already arrives as a transitive dependency.
+- The annotation can be changed via `nullableAnnotation` (e.g. `org.springframework.lang.Nullable`) — useful when projects already have a `@Nullable` annotation on the classpath.
 
-Set `useJSpecifyNullable: false` to always use the types-array form — no new dependency is added.
+Set `useNullableAnnotation: false` to always use the types-array form — no new dependency is added.
 
 ### Why JSpecify Is the Default
 

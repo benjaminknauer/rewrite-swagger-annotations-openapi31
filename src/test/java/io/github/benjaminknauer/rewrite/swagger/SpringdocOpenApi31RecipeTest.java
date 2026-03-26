@@ -29,7 +29,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
 
     @Test
     void fullMigrationScenario() {
-        // Default: useJSpecifyNullable=true → @Nullable for fields without explicit type=,
+        // Default: useNullableAnnotation=true → @Nullable for fields without explicit type=,
         //          @Schema(types={"T","null"}) for fields with explicit type=
         rewriteRun(
             properties(
@@ -305,7 +305,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
 
         @Test
         void onlyNullableActive_jspecify_onlyNullableIsMigrated() {
-            // Default: useJSpecifyNullable=true — nullable is replaced by @Nullable,
+            // Default: useNullableAnnotation=true — nullable is replaced by @Nullable,
             // remaining @Schema attributes are preserved
             rewriteRun(
                 spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, null, null, false, false, null, null))
@@ -334,8 +334,8 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         }
 
         @Test
-        void useJSpecifyNullableFalse_usesTypesArrayStrategy() {
-            // useJSpecifyNullable=false → NullableSchemaRecipe — types-array in annotation
+        void useNullableAnnotationFalse_usesTypesArrayStrategy() {
+            // useNullableAnnotation=false → NullableSchemaRecipe — types-array in annotation
             rewriteRun(
                 spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, false, null, false, false, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
