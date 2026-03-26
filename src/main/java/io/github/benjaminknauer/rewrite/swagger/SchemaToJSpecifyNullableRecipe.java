@@ -66,36 +66,63 @@ import org.jspecify.annotations.Nullable;
  */
 class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
-    private static final String SCHEMA_FQN   = "io.swagger.v3.oas.annotations.media.Schema";
-    private static final String NULLABLE_FQN = "org.jspecify.annotations.Nullable";
+    private static final String SCHEMA_FQN            = "io.swagger.v3.oas.annotations.media.Schema";
+    private static final String JSPECIFY_NULLABLE_FQN = "org.jspecify.annotations.Nullable";
+
+    @Option(
+        displayName = "Nullable annotation",
+        description = "Fully qualified name of the @Nullable annotation to introduce. "
+            + "Defaults to 'org.jspecify.annotations.Nullable' (JSpecify). "
+            + "Other common choices: 'org.springframework.lang.Nullable', "
+            + "'jakarta.annotation.Nullable', 'org.jetbrains.annotations.Nullable'.",
+        example = "org.springframework.lang.Nullable",
+        required = false
+    )
+    @Nullable
+    private final String nullableAnnotation;
 
     @Option(
         displayName = "Add org.jspecify:jspecify to pom.xml",
         description = "When true (default), adds 'org.jspecify:jspecify' as a compile dependency "
             + "to pom.xml if @Nullable is introduced and jspecify is not yet declared. "
-            + "Set to false when jspecify already arrives as a transitive dependency and "
-            + "you do not want it listed explicitly in your POM.",
+            + "Only applies when 'nullableAnnotation' is the default JSpecify annotation. "
+            + "Set to false when jspecify already arrives as a transitive dependency.",
         example = "false",
         required = false
     )
     @Nullable
     private final Boolean addJSpecifyDependency;
 
-    /** Default: all options enabled. */
+    /** Default: JSpecify @Nullable, dependency added automatically. */
     SchemaToJSpecifyNullableRecipe() {
-        this(null);
+        this(null, null);
     }
 
     @JsonCreator
     SchemaToJSpecifyNullableRecipe(
+        @JsonProperty("nullableAnnotation") @Nullable String nullableAnnotation,
         @JsonProperty("addJSpecifyDependency") @Nullable Boolean addJSpecifyDependency
     ) {
+        this.nullableAnnotation = nullableAnnotation;
         this.addJSpecifyDependency = addJSpecifyDependency;
+    }
+
+    /** Returns the effective nullable annotation FQN (JSpecify if not configured). */
+    private String effectiveNullableFqn() {
+        return (nullableAnnotation != null && !nullableAnnotation.isBlank())
+            ? nullableAnnotation
+            : JSPECIFY_NULLABLE_FQN;
+    }
+
+    /** Extracts the simple class name from a fully qualified name. */
+    private static String simpleName(String fqn) {
+        int idx = fqn.lastIndexOf('.');
+        return idx >= 0 ? fqn.substring(idx + 1) : fqn;
     }
 
     @Override
     public String getDisplayName() {
-        return "Migrate @Schema(nullable=true) — @Nullable (JSpecify) or types array";
+        return "Migrate @Schema(nullable=true) — @Nullable or types array";
     }
 
     @Override
@@ -103,12 +130,12 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
         return "Migrates '@Schema(nullable = true)' in two ways depending on context: "
             + "if an explicit 'type' attribute is present, converts to the OpenAPI 3.1 "
             + "'types = {\"X\", \"null\"}' form (same as NullableSchemaRecipe). "
-            + "If no explicit 'type' is set, replaces with '@org.jspecify.annotations.Nullable' "
+            + "If no explicit 'type' is set, replaces with a configurable @Nullable annotation "
+            + "(default: '@org.jspecify.annotations.Nullable') "
             + "and removes 'nullable' from @Schema (or the entire @Schema if it has no other "
             + "attributes) — letting springdoc-openapi infer the types array at runtime. "
             + "Uses a scan-first approach: org.jspecify:jspecify is only added to pom.xml when "
-            + "@Nullable is actually needed (i.e. the project contains @Schema(nullable=true) "
-            + "without an explicit 'type' attribute). "
+            + "the default JSpecify annotation is used and @Nullable is actually introduced. "
             + "Idempotent: fields already annotated with @Nullable are not changed. "
             + "This recipe is an alternative to NullableSchemaRecipe — do not use both.";
     }
@@ -168,21 +195,24 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
      */
     @Override
     public List<Recipe> getRecipeList() {
-        if (Boolean.FALSE.equals(addJSpecifyDependency)) {
+        // Only add jspecify dependency when the default JSpecify annotation is used
+        // and addJSpecifyDependency is not explicitly disabled
+        boolean isJSpecify = JSPECIFY_NULLABLE_FQN.equals(effectiveNullableFqn());
+        if (!isJSpecify || Boolean.FALSE.equals(addJSpecifyDependency)) {
             return List.of();
         }
         return List.of(
             new AddDependency(
                 "org.jspecify", "jspecify", "1.0.0",
-                null,            // versionPattern
-                "compile",       // scope
-                null,            // releasesOnly
-                NULLABLE_FQN,    // onlyIfUsing (position 7) — only add when @Nullable is used
-                null,            // type (position 8) — Maven packaging type, null = default (jar)
-                null,            // classifier
-                null,            // optional
-                null,            // familyPattern
-                null             // acceptTransitive
+                null,                  // versionPattern
+                "compile",             // scope
+                null,                  // releasesOnly
+                JSPECIFY_NULLABLE_FQN, // onlyIfUsing — only add when @Nullable is used
+                null,                  // type — Maven packaging type, null = default (jar)
+                null,                  // classifier
+                null,                  // optional
+                null,                  // familyPattern
+                null                   // acceptTransitive
             )
         );
     }
@@ -196,12 +226,20 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
         if (!hasCandidate.get()) {
             return TreeVisitor.noop();
         }
-        return new SchemaToJSpecifyVisitor();
+        return new SchemaToJSpecifyVisitor(effectiveNullableFqn());
     }
 
     // -------------------------------------------------------------------------
 
     private static class SchemaToJSpecifyVisitor extends JavaIsoVisitor<ExecutionContext> {
+
+        private final String nullableFqn;
+        private final String nullableSimpleName;
+
+        SchemaToJSpecifyVisitor(String nullableFqn) {
+            this.nullableFqn = nullableFqn;
+            this.nullableSimpleName = simpleName(nullableFqn);
+        }
 
         /**
          * Handles the <em>explicit-type case</em>:
@@ -290,13 +328,16 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 withCleanedSchema = visited;
             }
 
-            // Step 2: add @Nullable
-            maybeAddImport(NULLABLE_FQN);
+            // Step 2: add @Nullable (configurable annotation)
+            maybeAddImport(nullableFqn);
+            // Load known annotation JARs from classpath resources so the template
+            // parser can resolve the annotation type and keep the import.
+            JavaParser.Builder<?, ?> parserBuilder = JavaParser.fromJavaVersion()
+                .classpathFromResources(ctx, "jspecify", "spring-core");
             return JavaTemplate
-                .builder("@Nullable")
-                .imports(NULLABLE_FQN)
-                .javaParser(JavaParser.fromJavaVersion()
-                    .classpathFromResources(ctx, "jspecify"))
+                .builder("@" + nullableSimpleName)
+                .imports(nullableFqn)
+                .javaParser(parserBuilder)
                 .build()
                 .apply(
                     updateCursor(withCleanedSchema),
@@ -310,9 +351,9 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
         private boolean isNullableAnnotation(J.Annotation annotation) {
             if (annotation.getType() != null) {
-                return TypeUtils.isAssignableTo(NULLABLE_FQN, annotation.getType());
+                return TypeUtils.isAssignableTo(nullableFqn, annotation.getType());
             }
-            return "Nullable".equals(annotation.getSimpleName());
+            return nullableSimpleName.equals(annotation.getSimpleName());
         }
 
         private List<Expression> stripArgs(List<Expression> args, String... keysToRemove) {

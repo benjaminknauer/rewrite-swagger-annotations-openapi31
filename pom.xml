@@ -140,6 +140,13 @@
             <version>3.27.3</version>
             <scope>test</scope>
         </dependency>
+        <!-- Parser classpath for configurable nullable annotation tests -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>6.2.5</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -165,6 +172,12 @@
                                     <groupId>org.jspecify</groupId>
                                     <artifactId>jspecify</artifactId>
                                     <version>1.0.0</version>
+                                    <outputDirectory>${project.build.outputDirectory}/META-INF/rewrite/classpath</outputDirectory>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.springframework</groupId>
+                                    <artifactId>spring-core</artifactId>
+                                    <version>6.2.5</version>
                                     <outputDirectory>${project.build.outputDirectory}/META-INF/rewrite/classpath</outputDirectory>
                                 </artifactItem>
                             </artifactItems>

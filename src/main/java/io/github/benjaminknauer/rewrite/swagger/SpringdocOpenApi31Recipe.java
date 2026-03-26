@@ -65,8 +65,8 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     private final Boolean migrateNullable;
 
     @Option(
-        displayName = "Use @Nullable (JSpecify) for nullable fields without explicit type",
-        description = "When 'migrateNullable' is true: use @org.jspecify.annotations.Nullable "
+        displayName = "Use @Nullable for nullable fields without explicit type",
+        description = "When 'migrateNullable' is true: use a @Nullable annotation "
             + "for fields without an explicit 'type' attribute in @Schema. Fields with an explicit "
             + "'type' always get @Schema(types={\"T\",\"null\"}). "
             + "Set to 'false' to use @Schema(types={\"T\",\"null\"}) for all fields instead. "
@@ -78,11 +78,23 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     private final Boolean useJSpecifyNullable;
 
     @Option(
+        displayName = "Nullable annotation",
+        description = "Fully qualified name of the @Nullable annotation to introduce. "
+            + "Defaults to 'org.jspecify.annotations.Nullable' (JSpecify). "
+            + "Other common choices: 'org.springframework.lang.Nullable', "
+            + "'jakarta.annotation.Nullable', 'org.jetbrains.annotations.Nullable'. "
+            + "Only applies when 'useJSpecifyNullable' is true.",
+        example = "org.springframework.lang.Nullable",
+        required = false
+    )
+    @Nullable
+    private final String nullableAnnotation;
+
+    @Option(
         displayName = "Add org.jspecify:jspecify to pom.xml",
-        description = "When 'useJSpecifyNullable' is true: add 'org.jspecify:jspecify' as a "
-            + "compile dependency to pom.xml if @Nullable is introduced. "
-            + "Set to 'false' when jspecify already arrives as a transitive dependency and "
-            + "you do not want it listed explicitly in your POM. "
+        description = "When 'useJSpecifyNullable' is true and the default JSpecify annotation "
+            + "is used: add 'org.jspecify:jspecify' as a compile dependency to pom.xml. "
+            + "Set to 'false' when jspecify already arrives as a transitive dependency. "
             + "Default: true.",
         example = "false",
         required = false
@@ -132,7 +144,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
 
     /** All sub-recipes enabled by default; nullable strategy: JSpecify. */
     public SpringdocOpenApi31Recipe() {
-        this(null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -140,6 +152,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         @JsonProperty("enableOpenApi31Properties") @Nullable Boolean enableOpenApi31Properties,
         @JsonProperty("migrateNullable") @Nullable Boolean migrateNullable,
         @JsonProperty("useJSpecifyNullable") @Nullable Boolean useJSpecifyNullable,
+        @JsonProperty("nullableAnnotation") @Nullable String nullableAnnotation,
         @JsonProperty("migrateExclusiveMinMax") @Nullable Boolean migrateExclusiveMinMax,
         @JsonProperty("migrateExamples") @Nullable Boolean migrateExamples,
         @JsonProperty("migrateSingleType") @Nullable Boolean migrateSingleType,
@@ -148,6 +161,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         this.enableOpenApi31Properties = enableOpenApi31Properties;
         this.migrateNullable = migrateNullable;
         this.useJSpecifyNullable = useJSpecifyNullable;
+        this.nullableAnnotation = nullableAnnotation;
         this.migrateExclusiveMinMax = migrateExclusiveMinMax;
         this.migrateExamples = migrateExamples;
         this.migrateSingleType = migrateSingleType;
@@ -181,7 +195,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     public void buildRecipeList(RecipeList recipes) {
         if (isEnabled(enableOpenApi31Properties)) recipes.recipe(new EnableOpenApi31PropertiesRecipe());
         if (isEnabled(migrateNullable)) {
-            if (isEnabled(useJSpecifyNullable)) recipes.recipe(new SchemaToJSpecifyNullableRecipe(addJSpecifyDependency));
+            if (isEnabled(useJSpecifyNullable)) recipes.recipe(new SchemaToJSpecifyNullableRecipe(nullableAnnotation, addJSpecifyDependency));
             else                                recipes.recipe(new NullableSchemaRecipe());
         }
         if (isEnabled(migrateExclusiveMinMax)) recipes.recipe(new ExclusiveMinMaxRecipe());
@@ -202,6 +216,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         return Objects.equals(enableOpenApi31Properties, that.enableOpenApi31Properties)
             && Objects.equals(migrateNullable, that.migrateNullable)
             && Objects.equals(useJSpecifyNullable, that.useJSpecifyNullable)
+            && Objects.equals(nullableAnnotation, that.nullableAnnotation)
             && Objects.equals(migrateExclusiveMinMax, that.migrateExclusiveMinMax)
             && Objects.equals(migrateExamples, that.migrateExamples)
             && Objects.equals(migrateSingleType, that.migrateSingleType)
@@ -211,6 +226,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     @Override
     public int hashCode() {
         return Objects.hash(enableOpenApi31Properties, migrateNullable, useJSpecifyNullable,
-            migrateExclusiveMinMax, migrateExamples, migrateSingleType, addJSpecifyDependency);
+            nullableAnnotation, migrateExclusiveMinMax, migrateExamples, migrateSingleType,
+            addJSpecifyDependency);
     }
 }

@@ -370,4 +370,70 @@ class SchemaToJSpecifyNullableRecipeTest implements RewriteTest {
             );
         }
     }
+
+    // =========================================================================
+    // Configurable nullable annotation
+    // =========================================================================
+
+    @Nested
+    class ConfigurableNullableAnnotation {
+
+        @Test
+        void springNullableAnnotationIsUsed() {
+            rewriteRun(
+                spec -> spec
+                    .recipe(new SchemaToJSpecifyNullableRecipe("org.springframework.lang.Nullable", null))
+                    .parser(JavaParser.fromJavaVersion()
+                        .classpath("swagger-annotations-jakarta", "spring-core")),
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        @Schema(nullable = true)
+                        private String name;
+                    }
+                    """,
+                    """
+                    import org.springframework.lang.Nullable;
+
+                    class Example {
+                        @Nullable
+                        private String name;
+                    }
+                    """
+                )
+            );
+        }
+
+        @Test
+        void springNullableWithRemainingSchemaAttributesKeptsSchema() {
+            rewriteRun(
+                spec -> spec
+                    .recipe(new SchemaToJSpecifyNullableRecipe("org.springframework.lang.Nullable", null))
+                    .parser(JavaParser.fromJavaVersion()
+                        .classpath("swagger-annotations-jakarta", "spring-core")),
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        @Schema(nullable = true, description = "The user's name")
+                        private String name;
+                    }
+                    """,
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+                    import org.springframework.lang.Nullable;
+
+                    class Example {
+                        @Nullable
+                        @Schema(description = "The user's name")
+                        private String name;
+                    }
+                    """
+                )
+            );
+        }
+    }
 }
