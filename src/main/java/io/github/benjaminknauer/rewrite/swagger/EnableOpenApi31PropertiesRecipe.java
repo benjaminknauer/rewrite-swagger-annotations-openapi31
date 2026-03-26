@@ -1,8 +1,7 @@
 package io.github.benjaminknauer.rewrite.swagger;
 
-import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
-import org.openrewrite.TreeVisitor;
+import org.openrewrite.RecipeList;
 import org.openrewrite.properties.AddProperty;
 import org.openrewrite.properties.ChangePropertyValue;
 import org.openrewrite.yaml.ChangeValue;
@@ -10,8 +9,6 @@ import org.openrewrite.yaml.MergeYaml;
 
 import java.time.Duration;
 import java.util.Set;
-
-import java.util.List;
 
 /**
  * OpenRewrite recipe: enables OpenAPI 3.1 in springdoc-openapi 2.x.
@@ -60,42 +57,39 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
     }
 
     @Override
-    public List<Recipe> getRecipeList() {
-        return List.of(
-            // application.properties: update existing 3.0 entry to 3.1
-            new ChangePropertyValue(
-                PROPERTY_KEY,
-                OA_31_VALUE,
-                OA_30_VALUE,
-                false,
-                null
-            ),
-            // application.properties: add missing entry
-            new AddProperty(
-                PROPERTY_KEY,
-                OA_31_VALUE,
-                null,
-                null
-            ),
-            // application.yml: update existing value (openapi_3_0 → openapi_3_1)
-            new ChangeValue(
-                YAML_KEY_PATH,
-                OA_31_VALUE,
-                null
-            ),
-            // application.yml: insert missing entry as YAML fragment
-            new MergeYaml(
-                "$.springdoc.api-docs",
-                "version: " + OA_31_VALUE,
-                true,
-                null,
-                null
-            )
-        );
-    }
-
-    @Override
-    public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return TreeVisitor.noop();
+    public void buildRecipeList(RecipeList recipeList) {
+        // application.properties: update existing 3.0 entry to 3.1
+        recipeList.recipe(new ChangePropertyValue(
+            PROPERTY_KEY,
+            OA_31_VALUE,
+            OA_30_VALUE,
+            false,
+            null
+        ));
+        // application.properties: add missing entry
+        recipeList.recipe(new AddProperty(
+            PROPERTY_KEY,
+            OA_31_VALUE,
+            null,
+            null,
+            null
+        ));
+        // application.yml: update existing value (openapi_3_0 → openapi_3_1)
+        recipeList.recipe(new ChangeValue(
+            YAML_KEY_PATH,
+            OA_31_VALUE,
+            null
+        ));
+        // application.yml: insert missing entry as YAML fragment
+        recipeList.recipe(new MergeYaml(
+            "$.springdoc.api-docs",
+            "version: " + OA_31_VALUE,
+            true,
+            null,
+            null,
+            null,
+            null,
+            null
+        ));
     }
 }

@@ -3,14 +3,11 @@ package io.github.benjaminknauer.rewrite.swagger;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
-import org.openrewrite.ExecutionContext;
 import org.openrewrite.Option;
 import org.openrewrite.Recipe;
-import org.openrewrite.TreeVisitor;
+import org.openrewrite.RecipeList;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -150,21 +147,14 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     }
 
     @Override
-    public List<Recipe> getRecipeList() {
-        List<Recipe> recipes = new ArrayList<>();
-        if (isEnabled(enableOpenApi31Properties)) recipes.add(new EnableOpenApi31PropertiesRecipe());
+    public void buildRecipeList(RecipeList recipeList) {
+        if (isEnabled(enableOpenApi31Properties)) recipeList.recipe(new EnableOpenApi31PropertiesRecipe());
         if (isEnabled(migrateNullable)) {
-            if (isEnabled(useJSpecifyNullable)) recipes.add(new SchemaToJSpecifyNullableRecipe());
-            else                                recipes.add(new NullableSchemaRecipe());
+            if (isEnabled(useJSpecifyNullable)) recipeList.recipe(new SchemaToJSpecifyNullableRecipe());
+            else                                recipeList.recipe(new NullableSchemaRecipe());
         }
-        if (isEnabled(migrateExclusiveMinMax))    recipes.add(new ExclusiveMinMaxRecipe());
-        if (isEnabled(migrateExamples))           recipes.add(new ExampleMigrationRecipe());
-        return recipes;
-    }
-
-    @Override
-    public TreeVisitor<?, ExecutionContext> getVisitor() {
-        return TreeVisitor.noop();
+        if (isEnabled(migrateExclusiveMinMax))    recipeList.recipe(new ExclusiveMinMaxRecipe());
+        if (isEnabled(migrateExamples))           recipeList.recipe(new ExampleMigrationRecipe());
     }
 
     /** {@code null} or {@code true} → enabled; {@code false} → disabled. */
