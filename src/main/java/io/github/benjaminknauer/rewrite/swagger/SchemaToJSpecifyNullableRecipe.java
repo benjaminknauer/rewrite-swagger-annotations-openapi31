@@ -2,6 +2,7 @@ package io.github.benjaminknauer.rewrite.swagger;
 
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.ScanningRecipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.JavaParser;
@@ -16,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * OpenRewrite recipe: migrates {@code @Schema(nullable = true)} to either
@@ -38,14 +40,21 @@ import java.util.Set;
  *   <li>Only fields and method parameters ({@code J.VariableDeclarations}) are handled.</li>
  * </ul>
  *
- * <p>When {@code @Nullable} is added, the recipe also ensures that
- * {@code org.jspecify:jspecify} appears in the project's {@code pom.xml}
- * (added automatically if not already present).</p>
+ * <p>This recipe uses a two-phase approach via {@link ScanningRecipe}:</p>
+ * <ol>
+ *   <li><strong>Scan phase</strong>: scans all Java sources to detect whether any
+ *       {@code @Schema(nullable = true)} annotation without an explicit {@code type}
+ *       attribute exists in the project.</li>
+ *   <li><strong>Visit phase</strong>: only if the scan found at least one candidate,
+ *       the transformation is applied. This ensures that
+ *       {@code org.jspecify:jspecify} is only added to {@code pom.xml} when
+ *       {@code @Nullable} is actually introduced.</li>
+ * </ol>
  *
  * <p><strong>Note:</strong> This recipe and {@link NullableSchemaRecipe} are mutually exclusive —
  * do not combine them. Choose one migration strategy and apply it consistently.</p>
  */
-public class SchemaToJSpecifyNullableRecipe extends Recipe {
+public class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
     private static final String SCHEMA_FQN   = "io.swagger.v3.oas.annotations.media.Schema";
     private static final String NULLABLE_FQN = "org.jspecify.annotations.Nullable";
@@ -63,7 +72,9 @@ public class SchemaToJSpecifyNullableRecipe extends Recipe {
             + "If no explicit 'type' is set, replaces with '@org.jspecify.annotations.Nullable' "
             + "and removes 'nullable' from @Schema (or the entire @Schema if it has no other "
             + "attributes) — letting springdoc-openapi infer the types array at runtime. "
-            + "Also adds org.jspecify:jspecify to pom.xml when @Nullable is used. "
+            + "Uses a scan-first approach: org.jspecify:jspecify is only added to pom.xml when "
+            + "@Nullable is actually needed (i.e. the project contains @Schema(nullable=true) "
+            + "without an explicit 'type' attribute). "
             + "Idempotent: fields already annotated with @Nullable are not changed. "
             + "This recipe is an alternative to NullableSchemaRecipe — do not use both.";
     }
@@ -78,10 +89,52 @@ public class SchemaToJSpecifyNullableRecipe extends Recipe {
         return Duration.ofMinutes(5);
     }
 
+    // -------------------------------------------------------------------------
+    // ScanningRecipe API
+    // -------------------------------------------------------------------------
+
     /**
-     * Adds {@code org.jspecify:jspecify} to the project's {@code pom.xml} when
-     * {@code @Nullable} is actually used — i.e. only when the Java visitor made changes.
-     * {@link AddDependency} is idempotent and respects the {@code onlyIfUsing} guard.
+     * Initial accumulator: {@code false} — no candidate found yet.
+     */
+    @Override
+    public AtomicBoolean getInitialValue(ExecutionContext ctx) {
+        return new AtomicBoolean(false);
+    }
+
+    /**
+     * Scanner: detects whether any {@code @Schema(nullable = true)} annotation
+     * (with or without an explicit {@code type} attribute) exists in the project.
+     * Sets the accumulator to {@code true} on first match.
+     *
+     * <p>Both cases require transformation:
+     * <ul>
+     *   <li>With {@code type}: converted to {@code types = {"T", "null"}} array — no jSpecify.</li>
+     *   <li>Without {@code type}: replaced with {@code @Nullable} — jSpecify dependency added.</li>
+     * </ul>
+     * The jSpecify dependency is only added when {@code @Nullable} is actually present in the
+     * transformed code, guaranteed by {@link AddDependency}'s {@code onlyIfUsing} guard.</p>
+     */
+    @Override
+    public TreeVisitor<?, ExecutionContext> getScanner(AtomicBoolean hasCandidate) {
+        return new JavaIsoVisitor<>() {
+            @Override
+            public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
+                if (!hasCandidate.get()
+                        && isSchemaAnnotation(annotation)
+                        && hasNullableTrue(annotation)) {
+                    hasCandidate.set(true);
+                }
+                return annotation;
+            }
+        };
+    }
+
+    /**
+     * Adds {@code org.jspecify:jspecify} to the project's {@code pom.xml} only when
+     * the scan detected at least one candidate — i.e. only when {@code @Nullable}
+     * will actually be introduced.
+     * {@link AddDependency} is idempotent and uses {@code onlyIfUsing} as an
+     * additional guard.
      */
     @Override
     public List<Recipe> getRecipeList() {
@@ -101,8 +154,17 @@ public class SchemaToJSpecifyNullableRecipe extends Recipe {
         );
     }
 
+    /**
+     * Visitor: only active when the scan phase detected at least one candidate.
+     * If no {@code @Schema(nullable = true)} without {@code type} was found,
+     * returns a no-op visitor — no files are modified and no jspecify dependency
+     * is introduced.
+     */
     @Override
-    public TreeVisitor<?, ExecutionContext> getVisitor() {
+    public TreeVisitor<?, ExecutionContext> getVisitor(AtomicBoolean hasCandidate) {
+        if (!hasCandidate.get()) {
+            return TreeVisitor.noop();
+        }
         return new SchemaToJSpecifyVisitor();
     }
 
@@ -330,5 +392,41 @@ public class SchemaToJSpecifyNullableRecipe extends Recipe {
         private String extractKey(J.Assignment assignment) {
             return assignment.getVariable() instanceof J.Identifier id ? id.getSimpleName() : "";
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Static helper methods reused by the scanner and the main visitor
+    // -------------------------------------------------------------------------
+
+    private static boolean isSchemaAnnotation(J.Annotation annotation) {
+        if (annotation.getType() == null) {
+            return "Schema".equals(annotation.getSimpleName());
+        }
+        return TypeUtils.isAssignableTo(SCHEMA_FQN, annotation.getType());
+    }
+
+    private static boolean hasNullableTrue(J.Annotation annotation) {
+        List<Expression> args = annotation.getArguments();
+        if (args == null) return false;
+        return args.stream().anyMatch(arg ->
+            arg instanceof J.Assignment a
+            && "nullable".equals(extractKey(a))
+            && a.getAssignment() instanceof J.Literal lit
+            && Boolean.TRUE.equals(lit.getValue())
+        );
+    }
+
+    private static Optional<String> findStringArg(List<Expression> args, String key) {
+        if (args == null) return Optional.empty();
+        return args.stream()
+            .filter(arg -> arg instanceof J.Assignment a && key.equals(extractKey(a)))
+            .map(arg -> ((J.Assignment) arg).getAssignment())
+            .filter(val -> val instanceof J.Literal lit && lit.getValue() instanceof String)
+            .map(val -> (String) ((J.Literal) val).getValue())
+            .findFirst();
+    }
+
+    private static String extractKey(J.Assignment assignment) {
+        return assignment.getVariable() instanceof J.Identifier id ? id.getSimpleName() : "";
     }
 }

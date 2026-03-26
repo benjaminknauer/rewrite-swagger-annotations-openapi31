@@ -43,7 +43,6 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <springdoc.version>2.8.6</springdoc.version>
         <junit.version>5.12.2</junit.version>
     </properties>
 
@@ -90,11 +89,18 @@
             <artifactId>rewrite-maven</artifactId>
         </dependency>
 
-        <!-- swagger-annotations: Typ-Prüfungen im Classpath (auch zur Testlaufzeit nötig) -->
+        <!-- swagger-annotations: Typ-Prüfungen im Classpath und für classpath("swagger-annotations-jakarta") -->
         <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc.version}</version>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>2.2.29</version>
+        </dependency>
+
+        <!-- jspecify: Typ-Auflösung für @Nullable-Templates und classpath("jspecify") -->
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
         <!-- ===== Test-Scope ===== -->
