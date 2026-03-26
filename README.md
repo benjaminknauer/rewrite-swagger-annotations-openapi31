@@ -231,15 +231,28 @@ curl http://localhost:8080/v3/api-docs | jq .openapi
 
 ### nullable
 
+Default strategy (`useJSpecifyNullable: true`):
+
 ```java
 // Before (OA 3.0)
 @Schema(nullable = true)
-private String name;
+private String name;                           // no explicit type → @Nullable
 
 @Schema(type = "string", nullable = true)
-private String email;
+private String email;                          // explicit type → types array
 
-// After (OA 3.1)
+// After (OA 3.1, default JSpecify strategy)
+@Nullable
+private String name;
+
+@Schema(types = {"string", "null"})
+private String email;
+```
+
+Types-array strategy (`useJSpecifyNullable: false`):
+
+```java
+// After (OA 3.1, types-array strategy — no new dependency)
 @Schema(types = {"string", "null"})
 private String name;
 
