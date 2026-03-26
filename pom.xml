@@ -104,7 +104,12 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Java 21 Parser für Tests -->
+        <!-- Java-Parser für Tests: beide Versionen → OpenRewrite wählt die zur JVM passende -->
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-java-17</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.openrewrite</groupId>
             <artifactId>rewrite-java-21</artifactId>
@@ -145,7 +150,7 @@
                 <configuration>
                     <toolchains>
                         <jdk>
-                            <version>21</version>
+                            <version>17</version>
                         </jdk>
                     </toolchains>
                 </configuration>
