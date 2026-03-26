@@ -104,9 +104,23 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     @Nullable
     private final Boolean migrateExamples;
 
+    @Option(
+        displayName = "Migrate @Schema(type=...) to types array",
+        description = "Replaces the singular OpenAPI 3.0 attribute 'type = \"X\"' in @Schema "
+            + "with the OpenAPI 3.1 compliant array 'types = {\"X\"}'. "
+            + "In OpenAPI 3.1, the JSON Schema 'type' keyword is always an array. "
+            + "Annotations with 'nullable = true' are not affected by this option — they are "
+            + "handled by 'migrateNullable'. "
+            + "Enabled by default.",
+        example = "true",
+        required = false
+    )
+    @Nullable
+    private final Boolean migrateSingleType;
+
     /** All sub-recipes enabled by default; nullable strategy: JSpecify. */
     public SpringdocOpenApi31Recipe() {
-        this(null, null, null, null, null);
+        this(null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -115,13 +129,15 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         @JsonProperty("migrateNullable") @Nullable Boolean migrateNullable,
         @JsonProperty("useJSpecifyNullable") @Nullable Boolean useJSpecifyNullable,
         @JsonProperty("migrateExclusiveMinMax") @Nullable Boolean migrateExclusiveMinMax,
-        @JsonProperty("migrateExamples") @Nullable Boolean migrateExamples
+        @JsonProperty("migrateExamples") @Nullable Boolean migrateExamples,
+        @JsonProperty("migrateSingleType") @Nullable Boolean migrateSingleType
     ) {
         this.enableOpenApi31Properties = enableOpenApi31Properties;
         this.migrateNullable = migrateNullable;
         this.useJSpecifyNullable = useJSpecifyNullable;
         this.migrateExclusiveMinMax = migrateExclusiveMinMax;
         this.migrateExamples = migrateExamples;
+        this.migrateSingleType = migrateSingleType;
     }
 
     @Override
@@ -156,6 +172,8 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         }
         if (isEnabled(migrateExclusiveMinMax)) recipes.recipe(new ExclusiveMinMaxRecipe());
         if (isEnabled(migrateExamples))        recipes.recipe(new ExampleMigrationRecipe());
+        // Runs last: converts remaining type="X" (without nullable) to types={"X"}
+        if (isEnabled(migrateSingleType))      recipes.recipe(new SchemaTypeToTypesArrayRecipe());
     }
 
     /** {@code null} or {@code true} → enabled; {@code false} → disabled. */
@@ -171,12 +189,13 @@ public class SpringdocOpenApi31Recipe extends Recipe {
             && Objects.equals(migrateNullable, that.migrateNullable)
             && Objects.equals(useJSpecifyNullable, that.useJSpecifyNullable)
             && Objects.equals(migrateExclusiveMinMax, that.migrateExclusiveMinMax)
-            && Objects.equals(migrateExamples, that.migrateExamples);
+            && Objects.equals(migrateExamples, that.migrateExamples)
+            && Objects.equals(migrateSingleType, that.migrateSingleType);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(enableOpenApi31Properties, migrateNullable, useJSpecifyNullable,
-            migrateExclusiveMinMax, migrateExamples);
+            migrateExclusiveMinMax, migrateExamples, migrateSingleType);
     }
 }

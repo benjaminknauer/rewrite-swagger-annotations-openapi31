@@ -102,6 +102,56 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
     }
 
     @Test
+    void singleTypeIsMigratedToTypesArray() {
+        // type="X" without nullable → types={"X"}
+        // type="X" with nullable=true → types={"X","null"} via nullable recipe (runs before)
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Dto {
+                    @Schema(type = "string", description = "A code")
+                    private String code;
+
+                    @Schema(type = "string", nullable = true)
+                    private String note;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Dto {
+                    @Schema(description = "A code", types = {"string"})
+                    private String code;
+
+                    @Schema(types = {"string", "null"})
+                    private String note;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
+    void migrateSingleTypeFalse_typeRemainsUnchanged() {
+        rewriteRun(
+            spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, null, false, false, false))
+                .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Dto {
+                    @Schema(type = "string")
+                    private String name;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
     void alreadyMigratedCodeRemainsUnchanged() {
         rewriteRun(
             properties(
@@ -132,7 +182,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void migrateExamplesFalse_exampleRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, null, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, null, false, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -151,7 +201,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void migrateNullableFalse_nullableRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, false, null, null, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, false, null, null, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -170,7 +220,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void migrateExclusiveMinMaxFalse_legacyPatternRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, false, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(null, null, null, false, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -189,7 +239,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void enablePropertiesFalse_propertiesFileRemainsUnchanged() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, null, null, null, null))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, null, null, null, null, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 properties(
                     """
@@ -204,7 +254,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void allDisabled_noChange() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, false, false, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, false, false, false, false))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 properties(
                     """
@@ -230,7 +280,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         @Test
         void onlyExamplesActive_onlyExampleIsMigrated() {
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, null, false, true))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, false, null, false, true, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -258,7 +308,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
             // Default: useJSpecifyNullable=true — nullable is replaced by @Nullable,
             // remaining @Schema attributes are preserved
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, null, false, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, null, false, false, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
@@ -287,7 +337,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
         void useJSpecifyNullableFalse_usesTypesArrayStrategy() {
             // useJSpecifyNullable=false → NullableSchemaRecipe — types-array in annotation
             rewriteRun(
-                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, false, false, false))
+                spec -> spec.recipe(new SpringdocOpenApi31Recipe(false, true, false, false, false, null))
                     .parser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta")),
                 java(
                     """
