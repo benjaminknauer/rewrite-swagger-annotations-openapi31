@@ -6,7 +6,7 @@
 
     <groupId>io.github.benjaminknauer</groupId>
     <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
     <packaging>jar</packaging>
 
     <name>rewrite-swagger-annotations-openapi31</name>
