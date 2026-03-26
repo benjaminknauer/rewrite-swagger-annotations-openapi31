@@ -96,8 +96,8 @@ class ExampleMigrationRecipe extends Recipe {
                 return visited;
             }
 
-            Optional<String> exampleValue = findStringArg(args, "example");
-            if (exampleValue.isEmpty()) {
+            Optional<String> exampleSource = findLiteralSource(args, "example");
+            if (exampleSource.isEmpty()) {
                 return visited;
             }
 
@@ -110,8 +110,8 @@ class ExampleMigrationRecipe extends Recipe {
                 remaining.add(arg);
             }
 
-            String escapedValue = exampleValue.get().replace("\\", "\\\\").replace("\"", "\\\"");
-            String newArgCode = String.format("examples = {\"%s\"}", escapedValue);
+            // Use the original source representation (preserves text blocks and formatting)
+            String newArgCode = String.format("examples = {%s}", exampleSource.get());
 
             J.Annotation newAnnotation = JavaTemplate
                 .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
@@ -131,12 +131,12 @@ class ExampleMigrationRecipe extends Recipe {
             return "Schema".equals(annotation.getSimpleName());
         }
 
-        private Optional<String> findStringArg(List<Expression> args, String key) {
+        private Optional<String> findLiteralSource(List<Expression> args, String key) {
             for (Expression arg : args) {
                 if (arg instanceof J.Assignment assignment && key.equals(extractKey(assignment))) {
                     Expression value = assignment.getAssignment();
-                    if (value instanceof J.Literal literal && literal.getValue() instanceof String s) {
-                        return Optional.of(s);
+                    if (value instanceof J.Literal literal && literal.getValue() instanceof String) {
+                        return Optional.ofNullable(literal.getValueSource());
                     }
                 }
             }

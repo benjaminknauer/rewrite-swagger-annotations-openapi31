@@ -167,6 +167,36 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
+    void exampleWithTextBlockIsMigrated() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(implementation = Example.class, example = \"""
+                            {
+                              "id": 1
+                            }\""")
+                    private String value;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(implementation = Example.class, examples = {\"""
+                            {
+                              "id": 1
+                            }\"""})
+                    private String value;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
     void exampleWithMultipleAttributesRemainsComplete() {
         rewriteRun(
             java(
