@@ -11,8 +11,8 @@ import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -111,26 +111,29 @@ class SchemaTypeToTypesArrayRecipe extends Recipe {
                 return visited;
             }
 
-            // Remove 'type', keep all other attributes
-            List<Expression> remaining = new ArrayList<>();
-            for (Expression arg : args) {
-                if (arg instanceof J.Assignment a && "type".equals(extractKey(a))) {
-                    continue;
-                }
-                remaining.add(arg);
-            }
-
+            // Replace 'type' with 'types = {"X"}' at the same position
             String escapedValue = typeValue.get().replace("\\", "\\\\").replace("\"", "\\\"");
-            String newArgCode = String.format("types = {\"%s\"}", escapedValue);
-            String argString = buildArgString(remaining, newArgCode);
+            Expression typesArg = parseSingleArg(
+                String.format("types = {\"%s\"}", escapedValue), ctx);
 
-            return JavaTemplate
-                .builder("@Schema(" + argString + ")")
+            return SchemaAnnotationUtil.transformArgs(
+                visited,
+                Set.of(),
+                Map.of("type", typesArg),
+                List.of()
+            );
+        }
+
+        /** Parses a minimal draft annotation and returns its single argument as an LST node. */
+        private Expression parseSingleArg(String argSrc, ExecutionContext ctx) {
+            J.Annotation draft = JavaTemplate
+                .builder("@Schema(" + argSrc + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
-                .apply(getCursor(), visited.getCoordinates().replace());
+                .apply(getCursor(), getCursor().<J.Annotation>getValue().getCoordinates().replace());
+            return draft.getArguments().get(0);
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -154,19 +157,6 @@ class SchemaTypeToTypesArrayRecipe extends Recipe {
 
         private String extractKey(J.Assignment assignment) {
             return assignment.getVariable() instanceof J.Identifier id ? id.getSimpleName() : "";
-        }
-
-        private String buildArgString(List<Expression> remaining, String newArgCode) {
-            if (remaining.isEmpty()) {
-                return newArgCode;
-            }
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            sb.append(", ").append(newArgCode);
-            return sb.toString();
         }
     }
 }

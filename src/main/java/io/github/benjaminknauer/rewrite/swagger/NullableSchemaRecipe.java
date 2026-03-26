@@ -118,7 +118,7 @@ class NullableSchemaRecipe extends Recipe {
             LinkedList.class.getName(),
             Set.class.getName(),
             HashSet.class.getName(),
-            LinkedHashSet.class.getName(),
+            new LinkedHashSet<>().getClass().getName(),
             Collection.class.getName(),
             Queue.class.getName(),
             Deque.class.getName()
@@ -143,22 +143,40 @@ class NullableSchemaRecipe extends Recipe {
             }
 
             String baseType = findStringArg(args, "type").orElseGet(this::inferBaseType);
+            boolean hasExplicitType = findStringArg(args, "type").isPresent();
 
-            // Keep all args except 'nullable' and 'type'
-            List<Expression> remaining = new ArrayList<>();
-            for (Expression arg : args) {
-                if (arg instanceof J.Assignment assignment) {
-                    String key = extractKey(assignment);
-                    if ("nullable".equals(key) || "type".equals(key)) {
-                        continue;
-                    }
-                }
-                remaining.add(arg);
+            Expression typesArg = parseSingleArg(
+                String.format("types = {\"%s\", \"null\"}", baseType), ctx);
+
+            if (hasExplicitType) {
+                // Replace 'type' with 'types' at the same position, delete 'nullable'
+                return SchemaAnnotationUtil.transformArgs(
+                    visited,
+                    Set.of("nullable"),
+                    Map.of("type", typesArg),
+                    List.of()
+                );
+            } else {
+                // No 'type' present: delete 'nullable', append 'types' at the end
+                return SchemaAnnotationUtil.transformArgs(
+                    visited,
+                    Set.of("nullable"),
+                    Map.of(),
+                    List.of(typesArg)
+                );
             }
+        }
 
-            // Build new types attribute as a string array literal
-            String typesCode = String.format("types = {\"%s\", \"null\"}", baseType);
-            return buildAnnotationWithArgs(visited, remaining, typesCode, ctx);
+        /** Parses a minimal draft annotation and returns its single argument as an LST node. */
+        private Expression parseSingleArg(String argSrc, ExecutionContext ctx) {
+            J.Annotation draft = JavaTemplate
+                .builder("@Schema(" + argSrc + ")")
+                .imports(SCHEMA_FQN)
+                .javaParser(JavaParser.fromJavaVersion()
+                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
+                .build()
+                .apply(getCursor(), getCursor().<J.Annotation>getValue().getCoordinates().replace());
+            return draft.getArguments().get(0);
         }
 
         /**
@@ -253,35 +271,6 @@ class NullableSchemaRecipe extends Recipe {
                 return id.getSimpleName();
             }
             return "";
-        }
-
-        private J.Annotation buildAnnotationWithArgs(
-            J.Annotation original,
-            List<Expression> remaining,
-            String newArgCode,
-            ExecutionContext ctx
-        ) {
-            var template = JavaTemplate
-                .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
-                .imports(SCHEMA_FQN)
-                .javaParser(JavaParser.fromJavaVersion()
-                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
-                .build();
-
-            return template.apply(getCursor(), original.getCoordinates().replace());
-        }
-
-        private String buildArgString(List<Expression> remaining, String newArgCode) {
-            if (remaining.isEmpty()) {
-                return newArgCode;
-            }
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            sb.append(", ").append(newArgCode);
-            return sb.toString();
         }
     }
 }

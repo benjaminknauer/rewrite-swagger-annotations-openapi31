@@ -11,8 +11,10 @@ import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -96,14 +98,11 @@ class ExclusiveMinMaxRecipe extends Recipe {
                 return visited;
             }
 
-            // Parse integer value from minimum/maximum
             OptionalInt minValue = hasExclusiveMinTrue
                 ? parseIntArg(args, "minimum") : OptionalInt.empty();
             OptionalInt maxValue = hasExclusiveMaxTrue
                 ? parseIntArg(args, "maximum") : OptionalInt.empty();
 
-            // Abort if no corresponding minimum/maximum is present
-            // or if the value is non-integer (exclusiveMinimumValue is int)
             if (hasExclusiveMinTrue && minValue.isEmpty()) {
                 return visited;
             }
@@ -111,41 +110,36 @@ class ExclusiveMinMaxRecipe extends Recipe {
                 return visited;
             }
 
-            // Attributes to remove: minimum, exclusiveMinimum (boolean flag)
-            // and analogously for maximum
-            List<Expression> remaining = new ArrayList<>();
-            for (Expression arg : args) {
-                if (arg instanceof J.Assignment assignment) {
-                    String key = extractKey(assignment);
-                    if (hasExclusiveMinTrue && ("minimum".equals(key) || "exclusiveMinimum".equals(key))) {
-                        continue;
-                    }
-                    if (hasExclusiveMaxTrue && ("maximum".equals(key) || "exclusiveMaximum".equals(key))) {
-                        continue;
-                    }
-                }
-                remaining.add(arg);
+            // minimum → exclusiveMinimumValue (replace at same position)
+            // exclusiveMinimum → delete
+            // analogously for maximum / exclusiveMaximum
+            Map<String, Expression> replacements = new LinkedHashMap<>();
+            Set<String> keysToDelete = new LinkedHashSet<>();
+
+            if (hasExclusiveMinTrue) {
+                replacements.put("minimum",
+                    parseSingleArg("exclusiveMinimumValue = " + minValue.getAsInt(), ctx));
+                keysToDelete.add("exclusiveMinimum");
+            }
+            if (hasExclusiveMaxTrue) {
+                replacements.put("maximum",
+                    parseSingleArg("exclusiveMaximumValue = " + maxValue.getAsInt(), ctx));
+                keysToDelete.add("exclusiveMaximum");
             }
 
-            // New int attributes for OA 3.1
-            List<String> newArgs = new ArrayList<>();
-            if (hasExclusiveMinTrue && minValue.isPresent()) {
-                newArgs.add(String.format("exclusiveMinimumValue = %d", minValue.getAsInt()));
-            }
-            if (hasExclusiveMaxTrue && maxValue.isPresent()) {
-                newArgs.add(String.format("exclusiveMaximumValue = %d", maxValue.getAsInt()));
-            }
+            return SchemaAnnotationUtil.transformArgs(visited, keysToDelete, replacements, List.of());
+        }
 
-            String argString = buildArgString(remaining, newArgs);
-            J.Annotation newAnnotation = JavaTemplate
-                .builder("@Schema(" + argString + ")")
+        /** Parses a minimal draft annotation and returns its single argument as an LST node. */
+        private Expression parseSingleArg(String argSrc, ExecutionContext ctx) {
+            J.Annotation draft = JavaTemplate
+                .builder("@Schema(" + argSrc + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
-                .apply(getCursor(), visited.getCoordinates().replace());
-
-            return newAnnotation;
+                .apply(getCursor(), getCursor().<J.Annotation>getValue().getCoordinates().replace());
+            return draft.getArguments().get(0);
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -176,7 +170,7 @@ class ExclusiveMinMaxRecipe extends Recipe {
                         try {
                             return OptionalInt.of(Integer.parseInt(s));
                         } catch (NumberFormatException e) {
-                            return OptionalInt.empty(); // e.g. "1.5" → skip
+                            return OptionalInt.empty();
                         }
                     }
                 }
@@ -187,19 +181,6 @@ class ExclusiveMinMaxRecipe extends Recipe {
         private String extractKey(J.Assignment assignment) {
             Expression variable = assignment.getVariable();
             return variable instanceof J.Identifier id ? id.getSimpleName() : "";
-        }
-
-        private String buildArgString(List<Expression> remaining, List<String> newArgs) {
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            for (String newArg : newArgs) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(newArg);
-            }
-            return sb.toString();
         }
     }
 }

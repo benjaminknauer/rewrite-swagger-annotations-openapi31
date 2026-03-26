@@ -89,7 +89,7 @@ class SchemaToJSpecifyNullableRecipeTest implements RewriteTest {
                     import io.swagger.v3.oas.annotations.media.Schema;
 
                     class Example {
-                        @Schema(description = "ISO code", types = {"string", "null"})
+                        @Schema(types = {"string", "null"}, description = "ISO code")
                         private String code;
                     }
                     """

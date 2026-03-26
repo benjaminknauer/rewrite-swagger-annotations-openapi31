@@ -15,6 +15,7 @@ import org.openrewrite.maven.AddDependency;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -189,18 +190,25 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             Optional<String> explicitType = findStringArg(visited.getArguments(), "type");
             if (explicitType.isEmpty()) return visited; // handled in visitVariableDeclarations
 
-            // Keep all args except 'nullable' and 'type'; prepend new types={...}
-            List<Expression> remaining = stripArgs(visited.getArguments(), "nullable", "type");
-            String typesCode = String.format("types = {\"%s\", \"null\"}", explicitType.get());
-            String argString = buildArgString(remaining, typesCode);
+            // Replace 'type' with 'types = {"X", "null"}', delete 'nullable'
+            String escapedType = explicitType.get().replace("\\", "\\\\").replace("\"", "\\\"");
+            Expression typesArg = parseSingleArg(
+                String.format("types = {\"%s\", \"null\"}", escapedType), ctx);
 
-            return JavaTemplate
-                .builder("@Schema(" + argString + ")")
+            return SchemaAnnotationUtil.transformArgs(
+                visited, Set.of("nullable"), Map.of("type", typesArg), List.of());
+        }
+
+        /** Parses a minimal draft annotation and returns its single argument as an LST node. */
+        private Expression parseSingleArg(String argSrc, ExecutionContext ctx) {
+            J.Annotation draft = JavaTemplate
+                .builder("@Schema(" + argSrc + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
-                .apply(getCursor(), visited.getCoordinates().replace());
+                .apply(getCursor(), getCursor().<J.Annotation>getValue().getCoordinates().replace());
+            return draft.getArguments().get(0);
         }
 
         /**
@@ -283,18 +291,6 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 .toList();
         }
 
-        private String buildArgString(List<Expression> remaining, String newArgCode) {
-            if (remaining.isEmpty()) {
-                return newArgCode;
-            }
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            sb.append(", ").append(newArgCode);
-            return sb.toString();
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -324,18 +320,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 return visited;
             }
 
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            return JavaTemplate
-                .builder("@Schema(" + sb + ")")
-                .imports(SCHEMA_FQN)
-                .javaParser(JavaParser.fromJavaVersion()
-                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
-                .build()
-                .apply(getCursor(), visited.getCoordinates().replace());
+            return SchemaAnnotationUtil.transformArgs(
+                visited, Set.of("nullable"), Map.of(), List.of());
         }
     }
 

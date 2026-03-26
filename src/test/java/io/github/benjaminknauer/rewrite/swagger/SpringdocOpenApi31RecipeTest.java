@@ -122,7 +122,7 @@ class SpringdocOpenApi31RecipeTest implements RewriteTest {
                 import io.swagger.v3.oas.annotations.media.Schema;
 
                 class Dto {
-                    @Schema(description = "A code", types = {"string"})
+                    @Schema(types = {"string"}, description = "A code")
                     private String code;
 
                     @Schema(types = {"string", "null"})

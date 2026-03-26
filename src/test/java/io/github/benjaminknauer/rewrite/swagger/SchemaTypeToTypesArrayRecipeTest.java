@@ -84,7 +84,7 @@ class SchemaTypeToTypesArrayRecipeTest implements RewriteTest {
                 import io.swagger.v3.oas.annotations.media.Schema;
 
                 class Example {
-                    @Schema(description = "ISO 4217 code", minLength = 3, maxLength = 3, types = {"string"})
+                    @Schema(description = "ISO 4217 code", types = {"string"}, minLength = 3, maxLength = 3)
                     private String currency;
                 }
                 """
