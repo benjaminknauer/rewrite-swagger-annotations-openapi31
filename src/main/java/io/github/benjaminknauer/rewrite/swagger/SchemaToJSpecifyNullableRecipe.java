@@ -43,13 +43,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>This recipe uses a two-phase approach via {@link ScanningRecipe}:</p>
  * <ol>
  *   <li><strong>Scan phase</strong>: scans all Java sources to detect whether any
- *       {@code @Schema(nullable = true)} annotation without an explicit {@code type}
- *       attribute exists in the project.</li>
- *   <li><strong>Visit phase</strong>: only if the scan found at least one candidate,
- *       the transformation is applied. This ensures that
- *       {@code org.jspecify:jspecify} is only added to {@code pom.xml} when
- *       {@code @Nullable} is actually introduced.</li>
+ *       {@code @Schema(nullable = true)} annotation exists in the project.</li>
+ *   <li><strong>Visit phase</strong>: applies the transformation only if the scan found
+ *       at least one candidate. {@code @Nullable} is introduced only for annotations
+ *       without an explicit {@code type} attribute.</li>
  * </ol>
+ *
+ * <p>{@code org.jspecify:jspecify} is added to {@code pom.xml} via {@link AddDependency}
+ * with {@code onlyIfUsing = "org.jspecify.annotations.Nullable"}. Because sub-recipes in
+ * {@code getRecipeList()} run in a subsequent cycle <em>after</em> the visit phase has
+ * completed, {@link AddDependency} scans the already-transformed source and therefore
+ * only adds jspecify when {@code @Nullable} was actually introduced.</p>
  *
  * <p><strong>Note:</strong> This recipe and {@link NullableSchemaRecipe} are mutually exclusive —
  * do not combine them. Choose one migration strategy and apply it consistently.</p>
@@ -102,17 +106,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
     }
 
     /**
-     * Scanner: detects whether any {@code @Schema(nullable = true)} annotation
-     * (with or without an explicit {@code type} attribute) exists in the project.
+     * Scanner: detects whether any {@code @Schema(nullable = true)} annotation exists.
      * Sets the accumulator to {@code true} on first match.
-     *
-     * <p>Both cases require transformation:
-     * <ul>
-     *   <li>With {@code type}: converted to {@code types = {"T", "null"}} array — no jSpecify.</li>
-     *   <li>Without {@code type}: replaced with {@code @Nullable} — jSpecify dependency added.</li>
-     * </ul>
-     * The jSpecify dependency is only added when {@code @Nullable} is actually present in the
-     * transformed code, guaranteed by {@link AddDependency}'s {@code onlyIfUsing} guard.</p>
      */
     @Override
     public TreeVisitor<?, ExecutionContext> getScanner(AtomicBoolean hasCandidate) {
@@ -130,11 +125,16 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
     }
 
     /**
-     * Adds {@code org.jspecify:jspecify} to the project's {@code pom.xml} only when
-     * the scan detected at least one candidate — i.e. only when {@code @Nullable}
-     * will actually be introduced.
-     * {@link AddDependency} is idempotent and uses {@code onlyIfUsing} as an
-     * additional guard.
+     * Returns {@link AddDependency} as a sub-recipe. Sub-recipes in {@code getRecipeList()}
+     * run in a subsequent cycle, <em>after</em> the visit phase has transformed the Java
+     * sources. {@link AddDependency} therefore scans the already-modified files and uses
+     * its {@code onlyIfUsing} guard to add {@code org.jspecify:jspecify} only when
+     * {@code @org.jspecify.annotations.Nullable} is actually present.
+     *
+     * <p><strong>Constructor parameter order for {@link AddDependency}:</strong>
+     * groupId, artifactId, version, versionPattern, scope, releasesOnly,
+     * <strong>onlyIfUsing</strong> (pos 7), type (pos 8), classifier, optional,
+     * familyPattern, acceptTransitive.</p>
      */
     @Override
     public List<Recipe> getRecipeList() {
@@ -144,8 +144,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 null,            // versionPattern
                 "compile",       // scope
                 null,            // releasesOnly
-                null,            // type
-                NULLABLE_FQN,    // onlyIfUsing — dep added only if @Nullable is present
+                NULLABLE_FQN,    // onlyIfUsing (position 7) — only add when @Nullable is used
+                null,            // type (position 8) — Maven packaging type, null = default (jar)
                 null,            // classifier
                 null,            // optional
                 null,            // familyPattern
@@ -156,9 +156,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
     /**
      * Visitor: only active when the scan phase detected at least one candidate.
-     * If no {@code @Schema(nullable = true)} without {@code type} was found,
-     * returns a no-op visitor — no files are modified and no jspecify dependency
-     * is introduced.
+     * If no {@code @Schema(nullable = true)} was found, returns a no-op visitor.
      */
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor(AtomicBoolean hasCandidate) {
@@ -177,11 +175,9 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
          * {@code @Schema(type = "X", nullable = true, ...)} →
          * {@code @Schema(types = {"X", "null"}, ...)}.
          *
-         * <p>This runs as part of the normal tree traversal inside
-         * {@link #visitVariableDeclarations}. After this visitor finishes,
-         * any remaining {@code @Schema(nullable = true)} annotations in the field
-         * are guaranteed to have <em>no</em> explicit {@code type} attribute,
-         * and will be handled by the variable-declarations logic below.</p>
+         * <p>After this visitor runs, any remaining {@code @Schema(nullable = true)} in
+         * the field are guaranteed to have <em>no</em> explicit {@code type} attribute,
+         * and will be handled by {@link #visitVariableDeclarations}.</p>
          */
         @Override
         public J.Annotation visitAnnotation(J.Annotation annotation, ExecutionContext ctx) {
@@ -209,8 +205,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
         /**
          * Handles the <em>no-explicit-type case</em>:
-         * {@code @Schema(nullable = true)} (possibly with other attributes but no {@code type})
-         * → {@code @Nullable} + stripped / removed {@code @Schema}.
+         * {@code @Schema(nullable = true)} →
+         * {@code @Nullable} + stripped / removed {@code @Schema}.
          *
          * <p>Called after {@link #visitAnnotation} has already converted any explicit-type
          * schemas to the types-array form, so only genuinely no-type cases remain.</p>
@@ -222,7 +218,6 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             J.VariableDeclarations visited = super.visitVariableDeclarations(varDecls, ctx);
 
             // Find a @Schema without explicit type= that still carries nullable=true
-            // (explicit-type cases were already converted by visitAnnotation above)
             Optional<J.Annotation> schemaOpt = visited.getLeadingAnnotations().stream()
                 .filter(ann -> isSchemaAnnotation(ann)
                             && hasNullableTrue(ann)
@@ -271,7 +266,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 );
         }
 
-        // --- helpers (delegieren an statische Methoden der äußeren Klasse) ---
+        // --- helpers ---
 
         private boolean isNullableAnnotation(J.Annotation annotation) {
             if (annotation.getType() != null) {
@@ -306,9 +301,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
     /**
      * Follow-up visitor queued via {@code doAfterVisit}: strips {@code nullable = true}
-     * from {@code @Schema} annotations that have no explicit {@code type} but still carry
-     * other attributes (e.g. {@code description}).
-     * The fully-empty case is handled in the main visitor via {@code withLeadingAnnotations}.
+     * from {@code @Schema} annotations that have other attributes remaining.
      */
     private static class StripNullableFromSchemaVisitor extends JavaIsoVisitor<ExecutionContext> {
 
@@ -328,11 +321,9 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 .toList();
 
             if (remaining.isEmpty()) {
-                // Already removed by the main visitor; nothing to do here
                 return visited;
             }
 
-            // Rebuild @Schema without nullable=true via JavaTemplate for correct formatting
             StringBuilder sb = new StringBuilder();
             for (Expression expr : remaining) {
                 if (sb.length() > 0) sb.append(", ");
@@ -349,7 +340,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
     }
 
     // -------------------------------------------------------------------------
-    // Static helper methods reused by the scanner and the main visitor
+    // Static helper methods
     // -------------------------------------------------------------------------
 
     private static boolean isSchemaAnnotation(J.Annotation annotation) {

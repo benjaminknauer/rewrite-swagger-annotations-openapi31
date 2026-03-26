@@ -7,6 +7,7 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
+import static org.openrewrite.maven.Assertions.pomXml;
 
 class SchemaToJSpecifyNullableRecipeTest implements RewriteTest {
 
@@ -254,6 +255,66 @@ class SchemaToJSpecifyNullableRecipeTest implements RewriteTest {
                     }
                     """
                 )
+            );
+        }
+    }
+
+    // =========================================================================
+    // Regression: jspecify dependency must NOT be added for explicit-type cases
+    // =========================================================================
+
+    /**
+     * Regression test for the bug where jspecify was added to pom.xml even when
+     * no {@code @Nullable} was introduced (only {@code type→types} conversion).
+     *
+     * <p>Root cause: the {@link AddDependency} constructor call in {@code getRecipeList()}
+     * had the arguments in the wrong order — {@code onlyIfUsing} (position 7) was {@code null}
+     * (no filter), and {@code NULLABLE_FQN} was placed at position 8 ({@code type}, the Maven
+     * packaging type). With {@code onlyIfUsing = null}, {@link AddDependency} always added
+     * jspecify unconditionally, regardless of whether {@code @Nullable} was actually introduced.
+     *
+     * <p>Fixed by passing {@code NULLABLE_FQN} at position 7 ({@code onlyIfUsing}) and
+     * {@code null} at position 8 ({@code type}). The {@code onlyIfUsing} guard prevents
+     * jspecify from being added when {@code @org.jspecify.annotations.Nullable} is not present
+     * in the source code.</p>
+     *
+     * <p><strong>Note on pom.xml addition in real projects:</strong> when {@code @Nullable}
+     * IS introduced, {@link AddDependency} adds jspecify in a subsequent OpenRewrite cycle
+     * (cycle 2 scans the already-transformed source and finds {@code @Nullable}).
+     * This multi-cycle behavior is verified by integration tests, not by unit tests.</p>
+     */
+    @Nested
+    class JspecifyDependencyAddition {
+
+        @Test
+        void jspecifyNotAddedWhenOnlyExplicitTypeConversionHappens() {
+            rewriteRun(
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        @Schema(type = "string", nullable = true)
+                        private String email;
+                    }
+                    """,
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        @Schema(types = {"string", "null"})
+                        private String email;
+                    }
+                    """
+                ),
+                // pom.xml must remain unchanged — no jspecify dependency added
+                pomXml("""
+                    <project>
+                      <groupId>com.example</groupId>
+                      <artifactId>my-app</artifactId>
+                      <version>1.0</version>
+                    </project>
+                    """)
             );
         }
     }
