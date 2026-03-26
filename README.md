@@ -130,7 +130,7 @@ For permanent configuration or CI integration:
 <plugin>
     <groupId>org.openrewrite.maven</groupId>
     <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.43.0</version>
+    <version>6.35.0</version>
     <configuration>
         <activeRecipes>
             <recipe>io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe</recipe>
@@ -177,7 +177,7 @@ recipeList:
 <plugin>
     <groupId>org.openrewrite.maven</groupId>
     <artifactId>rewrite-maven-plugin</artifactId>
-    <version>5.43.0</version>
+    <version>6.35.0</version>
     <configuration>
         <activeRecipes>
             <recipe>com.mycompany.OpenApi31Migration</recipe>

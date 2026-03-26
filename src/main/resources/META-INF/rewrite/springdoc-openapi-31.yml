@@ -1,31 +1,4 @@
 ---
-# Standard migration — all sub-recipes active, including example→examples
-type: specs.openrewrite.org/v1beta/recipe
-name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
-displayName: Migrate springdoc-openapi 2.x Swagger annotations to OpenAPI 3.1
-description: >
-  Configurable migration of springdoc-openapi 2.x (OpenAPI 3.0) to OpenAPI 3.1.
-  Migrates nullable, exclusiveMinimum/Maximum, the springdoc properties entry,
-  and the deprecated example field (example→examples).
-
-  Options:
-    enableOpenApi31Properties: Sets springdoc.api-docs.version=openapi_3_1 in
-      application.properties and application.yml (default: true).
-    migrateNullable: Migrate @Schema(nullable=true); strategy controlled by useJSpecifyNullable (default: true).
-    useJSpecifyNullable: true (default) → @Nullable for fields without explicit type=,
-      @Schema(types={"T","null"}) for fields with explicit type=.
-      false → always @Schema(types={"T","null"}) (no new dependency).
-    migrateExclusiveMinMax: minimum+exclusiveMinimum=true → exclusiveMinimumValue=X (int) (default: true).
-    migrateExamples: @Schema(example="X") → examples={"X"} (default: true).
-      Set to false if any consumers of your API spec look for the singular 'example' field.
-tags:
-  - openapi
-  - swagger
-  - springdoc
-  - migration
-estimatedEffortPerOccurrence: PT15M
-
----
 # Annotations only — configuration files are not touched (JSpecify nullable)
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31AnnotationsOnlyRecipe

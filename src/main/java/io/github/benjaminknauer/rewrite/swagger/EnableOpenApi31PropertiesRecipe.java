@@ -80,13 +80,13 @@ public class EnableOpenApi31PropertiesRecipe extends Recipe {
             OA_31_VALUE,
             null
         ));
-        // application.yml: insert missing entry as YAML fragment
+        // application.yml: insert missing entry as YAML fragment (only in application*.yml files)
         recipeList.recipe(new MergeYaml(
             "$.springdoc.api-docs",
             "version: " + OA_31_VALUE,
             true,
             null,
-            null,
+            "**/application*.yml",
             null,
             null,
             null

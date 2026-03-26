@@ -115,7 +115,8 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
                   api-docs:
                     enabled: true
                     version: openapi_3_1
-                """
+                """,
+                spec -> spec.path("src/main/resources/application.yml")
             )
         );
     }
