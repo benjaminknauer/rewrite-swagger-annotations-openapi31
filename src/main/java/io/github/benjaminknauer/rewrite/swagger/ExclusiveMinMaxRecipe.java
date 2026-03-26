@@ -141,7 +141,7 @@ class ExclusiveMinMaxRecipe extends Recipe {
                 .builder("@Schema(" + argString + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
-                    .classpath("swagger-annotations-jakarta"))
+                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
 

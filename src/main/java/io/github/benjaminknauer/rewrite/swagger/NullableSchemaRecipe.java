@@ -158,7 +158,7 @@ class NullableSchemaRecipe extends Recipe {
 
             // Build new types attribute as a string array literal
             String typesCode = String.format("types = {\"%s\", \"null\"}", baseType);
-            return buildAnnotationWithArgs(visited, remaining, typesCode);
+            return buildAnnotationWithArgs(visited, remaining, typesCode, ctx);
         }
 
         /**
@@ -258,13 +258,14 @@ class NullableSchemaRecipe extends Recipe {
         private J.Annotation buildAnnotationWithArgs(
             J.Annotation original,
             List<Expression> remaining,
-            String newArgCode
+            String newArgCode,
+            ExecutionContext ctx
         ) {
             var template = JavaTemplate
                 .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
-                    .classpath("swagger-annotations-jakarta"))
+                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build();
 
             return template.apply(getCursor(), original.getCoordinates().replace());

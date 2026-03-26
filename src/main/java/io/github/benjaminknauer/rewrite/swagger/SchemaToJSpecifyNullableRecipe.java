@@ -201,7 +201,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             return JavaTemplate
                 .builder("@Schema(" + argString + ")")
                 .imports(SCHEMA_FQN)
-                .javaParser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta"))
+                .javaParser(JavaParser.fromJavaVersion()
+                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
         }
@@ -259,7 +260,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             return JavaTemplate
                 .builder("@Nullable")
                 .imports(NULLABLE_FQN)
-                .javaParser(JavaParser.fromJavaVersion().classpath("jspecify"))
+                .javaParser(JavaParser.fromJavaVersion()
+                    .classpathFromResources(ctx, "jspecify"))
                 .build()
                 .apply(
                     updateCursor(withCleanedSchema),
@@ -377,7 +379,8 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             return JavaTemplate
                 .builder("@Schema(" + sb + ")")
                 .imports(SCHEMA_FQN)
-                .javaParser(JavaParser.fromJavaVersion().classpath("swagger-annotations-jakarta"))
+                .javaParser(JavaParser.fromJavaVersion()
+                    .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
         }
