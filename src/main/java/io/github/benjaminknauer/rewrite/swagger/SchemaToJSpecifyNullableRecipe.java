@@ -1,6 +1,9 @@
 package io.github.benjaminknauer.rewrite.swagger;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.openrewrite.ExecutionContext;
+import org.openrewrite.Option;
 import org.openrewrite.Recipe;
 import org.openrewrite.ScanningRecipe;
 import org.openrewrite.TreeVisitor;
@@ -19,6 +22,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * OpenRewrite recipe: migrates {@code @Schema(nullable = true)} to either
@@ -63,6 +68,30 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
     private static final String SCHEMA_FQN   = "io.swagger.v3.oas.annotations.media.Schema";
     private static final String NULLABLE_FQN = "org.jspecify.annotations.Nullable";
+
+    @Option(
+        displayName = "Add org.jspecify:jspecify to pom.xml",
+        description = "When true (default), adds 'org.jspecify:jspecify' as a compile dependency "
+            + "to pom.xml if @Nullable is introduced and jspecify is not yet declared. "
+            + "Set to false when jspecify already arrives as a transitive dependency and "
+            + "you do not want it listed explicitly in your POM.",
+        example = "false",
+        required = false
+    )
+    @Nullable
+    private final Boolean addJSpecifyDependency;
+
+    /** Default: all options enabled. */
+    SchemaToJSpecifyNullableRecipe() {
+        this(null);
+    }
+
+    @JsonCreator
+    SchemaToJSpecifyNullableRecipe(
+        @JsonProperty("addJSpecifyDependency") @Nullable Boolean addJSpecifyDependency
+    ) {
+        this.addJSpecifyDependency = addJSpecifyDependency;
+    }
 
     @Override
     public String getDisplayName() {
@@ -139,6 +168,9 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
      */
     @Override
     public List<Recipe> getRecipeList() {
+        if (Boolean.FALSE.equals(addJSpecifyDependency)) {
+            return List.of();
+        }
         return List.of(
             new AddDependency(
                 "org.jspecify", "jspecify", "1.0.0",

@@ -69,7 +69,6 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         description = "When 'migrateNullable' is true: use @org.jspecify.annotations.Nullable "
             + "for fields without an explicit 'type' attribute in @Schema. Fields with an explicit "
             + "'type' always get @Schema(types={\"T\",\"null\"}). "
-            + "Adds org.jspecify:jspecify to pom.xml when @Nullable is introduced (idempotent). "
             + "Set to 'false' to use @Schema(types={\"T\",\"null\"}) for all fields instead. "
             + "Default: true.",
         example = "true",
@@ -77,6 +76,19 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     )
     @Nullable
     private final Boolean useJSpecifyNullable;
+
+    @Option(
+        displayName = "Add org.jspecify:jspecify to pom.xml",
+        description = "When 'useJSpecifyNullable' is true: add 'org.jspecify:jspecify' as a "
+            + "compile dependency to pom.xml if @Nullable is introduced. "
+            + "Set to 'false' when jspecify already arrives as a transitive dependency and "
+            + "you do not want it listed explicitly in your POM. "
+            + "Default: true.",
+        example = "false",
+        required = false
+    )
+    @Nullable
+    private final Boolean addJSpecifyDependency;
 
     @Option(
         displayName = "Migrate exclusiveMinimum / exclusiveMaximum",
@@ -120,7 +132,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
 
     /** All sub-recipes enabled by default; nullable strategy: JSpecify. */
     public SpringdocOpenApi31Recipe() {
-        this(null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -130,7 +142,8 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         @JsonProperty("useJSpecifyNullable") @Nullable Boolean useJSpecifyNullable,
         @JsonProperty("migrateExclusiveMinMax") @Nullable Boolean migrateExclusiveMinMax,
         @JsonProperty("migrateExamples") @Nullable Boolean migrateExamples,
-        @JsonProperty("migrateSingleType") @Nullable Boolean migrateSingleType
+        @JsonProperty("migrateSingleType") @Nullable Boolean migrateSingleType,
+        @JsonProperty("addJSpecifyDependency") @Nullable Boolean addJSpecifyDependency
     ) {
         this.enableOpenApi31Properties = enableOpenApi31Properties;
         this.migrateNullable = migrateNullable;
@@ -138,6 +151,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
         this.migrateExclusiveMinMax = migrateExclusiveMinMax;
         this.migrateExamples = migrateExamples;
         this.migrateSingleType = migrateSingleType;
+        this.addJSpecifyDependency = addJSpecifyDependency;
     }
 
     @Override
@@ -167,7 +181,7 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     public void buildRecipeList(RecipeList recipes) {
         if (isEnabled(enableOpenApi31Properties)) recipes.recipe(new EnableOpenApi31PropertiesRecipe());
         if (isEnabled(migrateNullable)) {
-            if (isEnabled(useJSpecifyNullable)) recipes.recipe(new SchemaToJSpecifyNullableRecipe());
+            if (isEnabled(useJSpecifyNullable)) recipes.recipe(new SchemaToJSpecifyNullableRecipe(addJSpecifyDependency));
             else                                recipes.recipe(new NullableSchemaRecipe());
         }
         if (isEnabled(migrateExclusiveMinMax)) recipes.recipe(new ExclusiveMinMaxRecipe());
@@ -190,12 +204,13 @@ public class SpringdocOpenApi31Recipe extends Recipe {
             && Objects.equals(useJSpecifyNullable, that.useJSpecifyNullable)
             && Objects.equals(migrateExclusiveMinMax, that.migrateExclusiveMinMax)
             && Objects.equals(migrateExamples, that.migrateExamples)
-            && Objects.equals(migrateSingleType, that.migrateSingleType);
+            && Objects.equals(migrateSingleType, that.migrateSingleType)
+            && Objects.equals(addJSpecifyDependency, that.addJSpecifyDependency);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(enableOpenApi31Properties, migrateNullable, useJSpecifyNullable,
-            migrateExclusiveMinMax, migrateExamples, migrateSingleType);
+            migrateExclusiveMinMax, migrateExamples, migrateSingleType, addJSpecifyDependency);
     }
 }
