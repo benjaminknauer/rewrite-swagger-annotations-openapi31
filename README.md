@@ -96,7 +96,7 @@ cd my-spring-project/
 
 # Full migration (all sub-recipes)
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
-  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.1 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
 ```
 
@@ -105,12 +105,12 @@ Apply only specific sub-recipes:
 ```bash
 # Migrate nullable only
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
-  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.1 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.NullableSchemaRecipe
 
 # Migrate example → examples only
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
-  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.1 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.ExampleMigrationRecipe
 ```
 
@@ -118,7 +118,7 @@ Preview without making changes (dry run):
 
 ```bash
 mvn org.openrewrite.maven:rewrite-maven-plugin:dryRun \
-  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.1 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31Recipe
 ```
 
@@ -140,7 +140,7 @@ For permanent configuration or CI integration:
         <dependency>
             <groupId>io.github.benjaminknauer</groupId>
             <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
-            <version>0.1.0</version>
+            <version>0.1.1</version>
         </dependency>
     </dependencies>
 </plugin>
@@ -187,7 +187,7 @@ recipeList:
         <dependency>
             <groupId>io.github.benjaminknauer</groupId>
             <artifactId>rewrite-swagger-annotations-openapi31</artifactId>
-            <version>0.1.0</version>
+            <version>0.1.1</version>
         </dependency>
     </dependencies>
 </plugin>
@@ -215,7 +215,7 @@ Available parameters for `SpringdocOpenApi31Recipe`:
 
 ```bash
 mvn org.openrewrite.maven:rewrite-maven-plugin:run \
-  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.0 \
+  -Drewrite.recipeArtifactCoordinates=io.github.benjaminknauer:rewrite-swagger-annotations-openapi31:0.1.1 \
   -Drewrite.activeRecipes=io.github.benjaminknauer.rewrite.swagger.SpringdocOpenApi31MinimalRecipe
 ```
 
