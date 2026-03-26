@@ -8,6 +8,9 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.tree.Expression;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JContainer;
+import org.openrewrite.java.tree.JRightPadded;
+import org.openrewrite.java.tree.Space;
 import org.openrewrite.java.tree.TypeUtils;
 
 import java.time.Duration;
@@ -101,27 +104,53 @@ class ExampleMigrationRecipe extends Recipe {
                 return visited;
             }
 
-            // Remove 'example', keep all other attributes
-            List<Expression> remaining = new ArrayList<>();
-            for (Expression arg : args) {
-                if (arg instanceof J.Assignment assignment && "example".equals(extractKey(assignment))) {
-                    continue;
-                }
-                remaining.add(arg);
-            }
-
-            // Use the original source representation (preserves text blocks and formatting)
-            String newArgCode = String.format("examples = {%s}", exampleSource.get());
-
-            J.Annotation newAnnotation = JavaTemplate
-                .builder("@Schema(" + buildArgString(remaining, newArgCode) + ")")
+            // Build a minimal draft annotation to obtain the correctly-structured
+            // 'examples = {<source>}' LST node, then splice it into the original
+            // annotation's argument container to preserve multiline formatting.
+            J.Annotation draft = JavaTemplate
+                .builder("@Schema(examples = {" + exampleSource.get() + "})")
                 .imports(SCHEMA_FQN)
                 .javaParser(JavaParser.fromJavaVersion()
                     .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
 
-            return newAnnotation;
+            Expression newExamplesArg = draft.getArguments().stream()
+                .filter(a -> a instanceof J.Assignment ass && "examples".equals(extractKey(ass)))
+                .findFirst()
+                .orElse(null);
+            if (newExamplesArg == null) {
+                return draft;
+            }
+
+            // Preserve the prefix (whitespace/indentation) of the original 'example' arg
+            Space examplePrefix = args.stream()
+                .filter(a -> a instanceof J.Assignment ass && "example".equals(extractKey(ass)))
+                .findFirst()
+                .map(Expression::getPrefix)
+                .orElse(Space.EMPTY);
+
+            // Swap only the 'example' element in the original container,
+            // keeping all other elements and their padding (newlines, indentation) intact.
+            JContainer<Expression> origContainer = visited.getPadding().getArguments();
+            if (origContainer == null) {
+                return draft;
+            }
+
+            List<JRightPadded<Expression>> origElements = origContainer.getPadding().getElements();
+            List<JRightPadded<Expression>> newElements = new ArrayList<>();
+            for (JRightPadded<Expression> paddedExpr : origElements) {
+                if (paddedExpr.getElement() instanceof J.Assignment ass
+                        && "example".equals(extractKey(ass))) {
+                    newElements.add(paddedExpr.withElement(newExamplesArg.withPrefix(examplePrefix)));
+                } else {
+                    newElements.add(paddedExpr);
+                }
+            }
+
+            return visited.getPadding().withArguments(
+                origContainer.getPadding().withElements(newElements)
+            );
         }
 
         private boolean isSchemaAnnotation(J.Annotation annotation) {
@@ -146,19 +175,6 @@ class ExampleMigrationRecipe extends Recipe {
         private String extractKey(J.Assignment assignment) {
             Expression variable = assignment.getVariable();
             return variable instanceof J.Identifier id ? id.getSimpleName() : "";
-        }
-
-        private String buildArgString(List<Expression> remaining, String newArgCode) {
-            if (remaining.isEmpty()) {
-                return newArgCode;
-            }
-            StringBuilder sb = new StringBuilder();
-            for (Expression expr : remaining) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(expr.print(getCursor()).strip());
-            }
-            sb.append(", ").append(newArgCode);
-            return sb.toString();
         }
     }
 }

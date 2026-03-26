@@ -197,6 +197,36 @@ class ExampleMigrationRecipeTest implements RewriteTest {
     }
 
     @Test
+    void multilineAnnotationPreservesFormatting() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(
+                            description = "The full name",
+                            example = "John Doe"
+                    )
+                    private String name;
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(
+                            description = "The full name",
+                            examples = {"John Doe"}
+                    )
+                    private String name;
+                }
+                """
+            )
+        );
+    }
+
+    @Test
     void exampleWithMultipleAttributesRemainsComplete() {
         rewriteRun(
             java(
