@@ -25,7 +25,7 @@ import java.util.Set;
  *   <li>Leaves {@code openapi_3_1} unchanged (idempotent)</li>
  * </ul>
  */
-public class EnableOpenApi31PropertiesRecipe extends Recipe {
+class EnableOpenApi31PropertiesRecipe extends Recipe {
 
     private static final String PROPERTY_KEY = "springdoc.api-docs.version";
     private static final String OA_31_VALUE = "openapi_3_1";

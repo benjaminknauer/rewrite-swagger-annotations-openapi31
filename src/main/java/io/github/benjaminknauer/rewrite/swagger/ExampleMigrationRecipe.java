@@ -41,7 +41,7 @@ import java.util.Set;
  *   <li>If {@code examples} (plural) is already present, the annotation is not changed (idempotent).</li>
  * </ul>
  */
-public class ExampleMigrationRecipe extends Recipe {
+class ExampleMigrationRecipe extends Recipe {
 
     private static final String SCHEMA_FQN = "io.swagger.v3.oas.annotations.media.Schema";
 

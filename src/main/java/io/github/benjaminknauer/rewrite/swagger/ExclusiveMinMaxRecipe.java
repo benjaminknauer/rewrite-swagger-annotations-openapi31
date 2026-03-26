@@ -42,7 +42,7 @@ import java.util.Set;
  *       → no change.</li>
  * </ul>
  */
-public class ExclusiveMinMaxRecipe extends Recipe {
+class ExclusiveMinMaxRecipe extends Recipe {
 
     private static final String SCHEMA_FQN = "io.swagger.v3.oas.annotations.media.Schema";
 

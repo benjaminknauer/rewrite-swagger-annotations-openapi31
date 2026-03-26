@@ -54,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p><strong>Note:</strong> This recipe and {@link NullableSchemaRecipe} are mutually exclusive —
  * do not combine them. Choose one migration strategy and apply it consistently.</p>
  */
-public class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
+class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
 
     private static final String SCHEMA_FQN   = "io.swagger.v3.oas.annotations.media.Schema";
     private static final String NULLABLE_FQN = "org.jspecify.annotations.Nullable";

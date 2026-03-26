@@ -49,7 +49,7 @@ import java.util.UUID;
  *   <li>{@code nullable = false} is ignored (no change).</li>
  * </ul>
  */
-public class NullableSchemaRecipe extends Recipe {
+class NullableSchemaRecipe extends Recipe {
 
     private static final String SCHEMA_FQN = "io.swagger.v3.oas.annotations.media.Schema";
 
