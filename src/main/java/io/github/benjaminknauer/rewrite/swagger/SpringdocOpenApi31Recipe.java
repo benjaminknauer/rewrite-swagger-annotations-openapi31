@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.Option;
 import org.openrewrite.Recipe;
+import org.openrewrite.RecipeList;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -148,20 +148,35 @@ public class SpringdocOpenApi31Recipe extends Recipe {
     }
 
     @Override
-    public List<Recipe> getRecipeList() {
-        List<Recipe> recipes = new ArrayList<>();
-        if (isEnabled(enableOpenApi31Properties)) recipes.add(new EnableOpenApi31PropertiesRecipe());
+    public void buildRecipeList(RecipeList recipes) {
+        if (isEnabled(enableOpenApi31Properties)) recipes.recipe(new EnableOpenApi31PropertiesRecipe());
         if (isEnabled(migrateNullable)) {
-            if (isEnabled(useJSpecifyNullable)) recipes.add(new SchemaToJSpecifyNullableRecipe());
-            else                                recipes.add(new NullableSchemaRecipe());
+            if (isEnabled(useJSpecifyNullable)) recipes.recipe(new SchemaToJSpecifyNullableRecipe());
+            else                                recipes.recipe(new NullableSchemaRecipe());
         }
-        if (isEnabled(migrateExclusiveMinMax))    recipes.add(new ExclusiveMinMaxRecipe());
-        if (isEnabled(migrateExamples))           recipes.add(new ExampleMigrationRecipe());
-        return recipes;
+        if (isEnabled(migrateExclusiveMinMax)) recipes.recipe(new ExclusiveMinMaxRecipe());
+        if (isEnabled(migrateExamples))        recipes.recipe(new ExampleMigrationRecipe());
     }
 
     /** {@code null} or {@code true} → enabled; {@code false} → disabled. */
     private boolean isEnabled(@Nullable Boolean option) {
         return option == null || option;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SpringdocOpenApi31Recipe that)) return false;
+        return Objects.equals(enableOpenApi31Properties, that.enableOpenApi31Properties)
+            && Objects.equals(migrateNullable, that.migrateNullable)
+            && Objects.equals(useJSpecifyNullable, that.useJSpecifyNullable)
+            && Objects.equals(migrateExclusiveMinMax, that.migrateExclusiveMinMax)
+            && Objects.equals(migrateExamples, that.migrateExamples);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(enableOpenApi31Properties, migrateNullable, useJSpecifyNullable,
+            migrateExclusiveMinMax, migrateExamples);
     }
 }

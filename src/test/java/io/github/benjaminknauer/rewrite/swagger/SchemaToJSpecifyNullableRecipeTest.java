@@ -257,4 +257,56 @@ class SchemaToJSpecifyNullableRecipeTest implements RewriteTest {
             );
         }
     }
+
+    // =========================================================================
+    // Method parameters
+    // =========================================================================
+
+    @Nested
+    class MethodParameters {
+
+        @Test
+        void nullableOnlyOnMethodParameterBecomesNullable() {
+            rewriteRun(
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        void setName(@Schema(nullable = true) String name) {}
+                    }
+                    """,
+                    """
+                    import org.jspecify.annotations.Nullable;
+
+                    class Example {
+                        void setName(@Nullable String name) {}
+                    }
+                    """
+                )
+            );
+        }
+
+        @Test
+        void nullableWithExplicitTypeOnMethodParameterBecomesTypesArray() {
+            rewriteRun(
+                java(
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        void setEmail(@Schema(type = "string", nullable = true) String email) {}
+                    }
+                    """,
+                    """
+                    import io.swagger.v3.oas.annotations.media.Schema;
+
+                    class Example {
+                        void setEmail(@Schema(types = {"string", "null"}) String email) {}
+                    }
+                    """
+                )
+            );
+        }
+    }
 }

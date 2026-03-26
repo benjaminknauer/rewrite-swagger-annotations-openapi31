@@ -26,13 +26,13 @@ import java.util.Set;
  * an array. The singular {@code example} field is deprecated in OA 3.1 in
  * favour of {@code examples}.</p>
  *
- * <p><strong>Note:</strong> This recipe is disabled by default in
- * {@link SpringdocOpenApi31Recipe} because the migration changes the generated
- * JSON output ({@code "example": "foo"} → {@code "examples": ["foo"]}), which
- * can break tools, client generators, or documentation renderers that look for
- * the singular field. Enable explicitly via {@code migrateExamples: true} once
- * you have verified that all consumers of your API spec handle the
- * {@code examples} array form.</p>
+ * <p><strong>Note:</strong> This recipe is enabled by default in
+ * {@link SpringdocOpenApi31Recipe}. The migration changes the generated JSON
+ * output ({@code "example": "foo"} → {@code "examples": ["foo"]}), which can
+ * break tools, client generators, or documentation renderers that only look for
+ * the singular field. Set {@code migrateExamples: false} to skip this migration
+ * until all consumers of your API spec can handle the {@code examples} array
+ * form.</p>
  *
  * <p>Transformation rules:</p>
  * <ul>

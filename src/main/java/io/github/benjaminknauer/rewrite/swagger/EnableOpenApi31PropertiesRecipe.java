@@ -78,7 +78,7 @@ class EnableOpenApi31PropertiesRecipe extends Recipe {
         recipeList.recipe(new ChangeValue(
             YAML_KEY_PATH,
             OA_31_VALUE,
-            null
+            "**/application*.yml"
         ));
         // application.yml: insert missing entry as YAML fragment (only in application*.yml files)
         recipeList.recipe(new MergeYaml(

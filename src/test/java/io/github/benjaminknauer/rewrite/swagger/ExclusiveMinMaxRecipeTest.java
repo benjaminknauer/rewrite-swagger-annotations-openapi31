@@ -161,4 +161,21 @@ class ExclusiveMinMaxRecipeTest implements RewriteTest {
             )
         );
     }
+
+    @Test
+    void exclusiveMinimumTrueWithoutMinimumRemainsUnchanged() {
+        // exclusiveMinimum=true without minimum → no corresponding value to convert
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    @Schema(exclusiveMinimum = true)
+                    private int value;
+                }
+                """
+            )
+        );
+    }
 }

@@ -255,4 +255,26 @@ class NullableSchemaRecipeTest implements RewriteTest {
             )
         );
     }
+
+    @Test
+    void nullableOnMethodParameterBecomesTypesArray() {
+        rewriteRun(
+            java(
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    void setName(@Schema(nullable = true) String name) {}
+                }
+                """,
+                """
+                import io.swagger.v3.oas.annotations.media.Schema;
+
+                class Example {
+                    void setName(@Schema(types = {"string", "null"}) String name) {}
+                }
+                """
+            )
+        );
+    }
 }

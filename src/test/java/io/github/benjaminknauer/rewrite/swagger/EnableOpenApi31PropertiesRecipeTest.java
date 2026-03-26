@@ -96,7 +96,8 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
                 springdoc:
                   api-docs:
                     version: openapi_3_1
-                """
+                """,
+                spec -> spec.path("src/main/resources/application.yml")
             )
         );
     }
@@ -129,8 +130,10 @@ class EnableOpenApi31PropertiesRecipeTest implements RewriteTest {
                 springdoc:
                   api-docs:
                     version: openapi_3_1
-                """
+                """,
+                spec -> spec.path("src/main/resources/application.yml")
             )
         );
     }
+
 }

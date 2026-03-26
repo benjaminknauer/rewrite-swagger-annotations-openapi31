@@ -271,25 +271,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                 );
         }
 
-        // --- helpers ---------------------------------------------------------
-
-        private boolean isSchemaAnnotation(J.Annotation annotation) {
-            if (annotation.getType() == null) {
-                return "Schema".equals(annotation.getSimpleName());
-            }
-            return TypeUtils.isAssignableTo(SCHEMA_FQN, annotation.getType());
-        }
-
-        private boolean hasNullableTrue(J.Annotation annotation) {
-            List<Expression> args = annotation.getArguments();
-            if (args == null) return false;
-            return args.stream().anyMatch(arg ->
-                arg instanceof J.Assignment a
-                && "nullable".equals(extractKey(a))
-                && a.getAssignment() instanceof J.Literal lit
-                && Boolean.TRUE.equals(lit.getValue())
-            );
-        }
+        // --- helpers (delegieren an statische Methoden der äußeren Klasse) ---
 
         private boolean isNullableAnnotation(J.Annotation annotation) {
             if (annotation.getType() != null) {
@@ -298,26 +280,12 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             return "Nullable".equals(annotation.getSimpleName());
         }
 
-        private Optional<String> findStringArg(List<Expression> args, String key) {
-            if (args == null) return Optional.empty();
-            return args.stream()
-                .filter(arg -> arg instanceof J.Assignment a && key.equals(extractKey(a)))
-                .map(arg -> ((J.Assignment) arg).getAssignment())
-                .filter(val -> val instanceof J.Literal lit && lit.getValue() instanceof String)
-                .map(val -> (String) ((J.Literal) val).getValue())
-                .findFirst();
-        }
-
         private List<Expression> stripArgs(List<Expression> args, String... keysToRemove) {
             if (args == null) return List.of();
             Set<String> keys = Set.of(keysToRemove);
             return args.stream()
                 .filter(arg -> !(arg instanceof J.Assignment a && keys.contains(extractKey(a))))
                 .toList();
-        }
-
-        private String extractKey(J.Assignment assignment) {
-            return assignment.getVariable() instanceof J.Identifier id ? id.getSimpleName() : "";
         }
 
         private String buildArgString(List<Expression> remaining, String newArgCode) {
@@ -353,13 +321,7 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
             List<Expression> args = visited.getArguments();
             if (args == null || args.isEmpty()) return visited;
 
-            boolean hasNullableTrue = args.stream().anyMatch(arg ->
-                arg instanceof J.Assignment a
-                && "nullable".equals(extractKey(a))
-                && a.getAssignment() instanceof J.Literal lit
-                && Boolean.TRUE.equals(lit.getValue())
-            );
-            if (!hasNullableTrue) return visited;
+            if (!hasNullableTrue(visited)) return visited;
 
             List<Expression> remaining = args.stream()
                 .filter(arg -> !(arg instanceof J.Assignment a && "nullable".equals(extractKey(a))))
@@ -383,17 +345,6 @@ class SchemaToJSpecifyNullableRecipe extends ScanningRecipe<AtomicBoolean> {
                     .classpathFromResources(ctx, "swagger-annotations-jakarta"))
                 .build()
                 .apply(getCursor(), visited.getCoordinates().replace());
-        }
-
-        private boolean isSchemaAnnotation(J.Annotation annotation) {
-            if (annotation.getType() == null) {
-                return "Schema".equals(annotation.getSimpleName());
-            }
-            return TypeUtils.isAssignableTo(SCHEMA_FQN, annotation.getType());
-        }
-
-        private String extractKey(J.Assignment assignment) {
-            return assignment.getVariable() instanceof J.Identifier id ? id.getSimpleName() : "";
         }
     }
 
